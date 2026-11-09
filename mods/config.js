@@ -1,3 +1,5 @@
+// Captured before any module patches JSON.parse; patched parsers call configRead(), so cloning defaults with the patched one recurses forever.
+const nativeJSONParse = JSON.parse;
 const CONFIG_KEY = 'ytaf-configuration';
 const defaultConfig = {
   enableAdBlock: true,
@@ -89,7 +91,7 @@ export function configRead(key) {
   if (localConfig[key] === undefined) {
     console.warn('Populating key', key, 'with default value', defaultConfig[key]);
     const fallback = defaultConfig[key];
-    localConfig[key] = typeof fallback === 'object' && fallback !== null ? JSON.parse(JSON.stringify(fallback)) : fallback;
+    localConfig[key] = typeof fallback === 'object' && fallback !== null ? nativeJSONParse(JSON.stringify(fallback)) : fallback;
   }
 
   return localConfig[key];
