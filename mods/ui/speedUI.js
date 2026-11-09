@@ -1,6 +1,7 @@
 import { configRead } from '../config.js';
 import { showModal, buttonItem, overlayPanelItemListRenderer } from './ytUI.js';
 import { t } from 'i18next';
+import { getSpeedForCurrentChannel } from '../utils/channelSpeed.js';
 
 const interval = setInterval(() => {
     const videoElement = document.querySelector('video');
@@ -12,7 +13,7 @@ const interval = setInterval(() => {
 
 function execute_once_dom_loaded_speed() {
     document.querySelector('video').addEventListener('canplay', () => {
-        document.getElementsByTagName('video')[0].playbackRate = configRead('videoSpeed');;
+        document.getElementsByTagName('video')[0].playbackRate = getSpeedForCurrentChannel();
     });
 
     const eventHandler = (evt) => {

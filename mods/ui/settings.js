@@ -200,6 +200,23 @@ export default function modernUI(update, parameters) {
                 {
                     name: t('settings.options.sponsorblock.options.showSBToasts'),
                     value: 'enableSponsorBlockToasts'
+                },
+                {
+                    name: t('settings.options.sponsorblock.options.minSegmentLength.title'),
+                    icon: 'TIMER',
+                    value: null,
+                    menuId: 'tt-sb-min-segment',
+                    menuHeader: {
+                        title: t('settings.options.sponsorblock.options.minSegmentLength.title'),
+                        subtitle: t('settings.options.sponsorblock.options.minSegmentLength.subtitle')
+                    },
+                    options: [0, 1, 2, 3, 5, 10].map((seconds) => ({
+                        name: seconds === 0
+                            ? t('settings.options.sponsorblock.options.minSegmentLength.off')
+                            : t('settings.options.time.seconds', { count: seconds }),
+                        key: 'sponsorBlockMinSegmentSeconds',
+                        value: seconds
+                    }))
                 }
             ]
         },
@@ -639,6 +656,42 @@ export default function modernUI(update, parameters) {
                             })
                         }
                     ]
+                },
+                {
+                    name: t('settings.options.uiSettings.options.trueBlackBackground'),
+                    icon: 'EYE_OFF',
+                    value: 'trueBlackBackground'
+                },
+                {
+                    name: t('settings.options.uiSettings.options.progressBarColor.title'),
+                    icon: 'LENS_BLUE',
+                    value: null,
+                    menuId: 'tt-progress-bar-color',
+                    menuHeader: {
+                        title: t('settings.options.uiSettings.options.progressBarColor.title'),
+                        subtitle: t('settings.options.uiSettings.options.progressBarColor.subtitle')
+                    },
+                    options: [
+                        ['default', ''],
+                        ['red', '#ff0000'],
+                        ['orange', '#ff8c00'],
+                        ['yellow', '#ffd400'],
+                        ['green', '#00c853'],
+                        ['cyan', '#00e5ff'],
+                        ['blue', '#2979ff'],
+                        ['purple', '#aa00ff'],
+                        ['pink', '#ff4081'],
+                        ['white', '#ffffff']
+                    ].map(([id, color]) => ({
+                        name: t(`settings.options.uiSettings.options.progressBarColor.colors.${id}`),
+                        key: 'progressBarColor',
+                        value: color
+                    }))
+                },
+                {
+                    name: t('settings.options.uiSettings.options.rememberSpeedPerChannel'),
+                    icon: 'TIMER',
+                    value: 'rememberSpeedPerChannel'
                 },
                 {
                     name: t('settings.options.uiSettings.options.disableSidebarContents.title'),
