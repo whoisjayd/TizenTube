@@ -136,7 +136,11 @@ test('early injection attaches the theme and PiP observer when the DOM arrives',
     document.body = element();
     document.readyState = 'interactive';
     document.dispatch('DOMContentLoaded');
+    const before = observations.length;
+    context.isPipPlaying = true; // the PiP observer is attached lazily, once PiP is actually playing
+    assert.equal(observations.length, before + 1);
     assert.ok(observations.includes(document.body));
+    context.isPipPlaying = false;
     assert.ok(document.head.children.some(child => child.textContent.includes('#container')));
     assert.equal(registeredProperties.length, 3, 'navigation CSS registers after the root element exists');
     context.dispatch('load');

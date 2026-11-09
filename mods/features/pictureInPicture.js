@@ -2,7 +2,22 @@
 
 import resolveCommand from "../resolveCommand.js";
 
-window.isPipPlaying = false;
+// isPipPlaying is an accessor so the (expensive, whole-document) mutation observer below is only
+// attached while PiP is actually active instead of firing on every DOM change for the app's lifetime.
+let pipPlaying = false;
+let pipObserverAttached = false;
+let pipObserver = null;
+Object.defineProperty(window, 'isPipPlaying', {
+    configurable: true,
+    enumerable: true,
+    get() {
+        return pipPlaying;
+    },
+    set(value) {
+        pipPlaying = !!value;
+        syncPipObserver();
+    }
+});
 let PlayerService = null;
 
 function pipLoad() {
@@ -193,15 +208,23 @@ const observerPipEnter = new MutationObserver(() => {
     }
 });
 
-function observePipEnter() {
-    observerPipEnter.observe(document.body, { childList: true, subtree: true });
+function syncPipObserver() {
+    if (!pipObserver) return;
+    if (pipPlaying && !pipObserverAttached) {
+        if (!document.body) {
+            document.addEventListener('DOMContentLoaded', syncPipObserver);
+            return;
+        }
+        pipObserver.observe(document.body, { childList: true, subtree: true });
+        pipObserverAttached = true;
+    } else if (!pipPlaying && pipObserverAttached) {
+        if (typeof pipObserver.disconnect === 'function') pipObserver.disconnect();
+        pipObserverAttached = false;
+    }
 }
 
-if (document.body) {
-    observePipEnter();
-} else {
-    document.addEventListener('DOMContentLoaded', observePipEnter);
-}
+pipObserver = observerPipEnter;
+syncPipObserver();
 
 export {
     enablePip,
