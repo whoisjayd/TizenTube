@@ -182,6 +182,13 @@ test('ads nested in playerResponse (object or array) are stripped', () => {
     assert.equal(arr[0].playerResponse.adSlots.length, 0);
 });
 
+test('valid-JSON-but-not-an-object saved config falls back to defaults instead of breaking startup', () => {
+    for (const config of [null, 5, [], 'text']) {
+        const { context } = page('loaded', undefined, config);
+        assertCoreFeatures(context);
+    }
+});
+
 test('row continuation tiles get previews and a tile without a watch endpoint does not abort parsing', () => {
     const { context } = page('loaded');
     context.response = JSON.stringify({

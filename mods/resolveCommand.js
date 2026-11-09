@@ -70,11 +70,13 @@ export function patchResolveCommand() {
                     pendingShortsCommand = () => ogResolve.call(this, cmd, _);
                     return true;
                 }
+                if (!cmd) return ogResolve.call(this, cmd, _);
                 if (cmd.setClientSettingEndpoint) {
                     // Command to change client settings. Use TizenTube configuration to change settings.
                     for (const settings of cmd.setClientSettingEndpoint.settingDatas) {
                         if (!settings.clientSettingEnum.item.includes('_')) {
-                            for (const setting of cmd.setClientSettingEndpoint.settingDatas) {
+                            // Handle only the current entry; looping all entries here applied (and toggled) each one repeatedly.
+                            for (const setting of [settings]) {
                                 const valName = Object.keys(setting).find(key => key.includes('Value'));
                                 const value = valName === 'intValue' ? Number(setting[valName]) : setting[valName];
                                 if (valName === 'arrayValue') {

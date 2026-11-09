@@ -75,13 +75,15 @@ app.get('/tizentube/getState', (req, res) => {
 
 app.get('/tizentube/debugger', (req, res) => {
     const args = req.originalUrl.split('?')[1] || '';
+    // Answer right away; the client doesn't wait for the debugger (a hanging request leaks a socket per launch).
+    res.end();
     const interval = setInterval(() => {
         tizen.application.getAppsContext((appsContext) => {
             const packageId = tizen.application.getAppInfo().packageId;
             const app = appsContext.find(app => app.appId === `${packageId}.TizenTubeStandalone`);
             if (!app) {
+                clearInterval(interval);
                 injector.startDebugger(args);
-                clearInterval(interval)
             }
         });
     }, 50);

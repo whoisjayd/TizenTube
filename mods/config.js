@@ -79,7 +79,11 @@ try {
   localConfig = JSON.parse(window.localStorage[CONFIG_KEY]);
 } catch (err) {
   console.warn('Config read failed:', err);
-  localConfig = defaultConfig;
+}
+
+// Valid JSON such as "null", a number or an array would otherwise break every configRead.
+if (!localConfig || typeof localConfig !== 'object' || Array.isArray(localConfig)) {
+  localConfig = {};
 }
 
 export function configRead(key) {

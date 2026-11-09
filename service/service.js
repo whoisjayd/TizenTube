@@ -62,13 +62,10 @@ const dialServer = new dial.Server({
                 const parsedData = launchData.split('&').reduce((acc, cur) => {
                     const parts = cur.split('=');
                     const key = parts[0];
-                    const value = parts[1];
-                
-                    if (typeof value !== 'undefined') {
-                        acc[key] = value;
-                    } else {
-                        acc[key] = '';
-                    }
+                    // Keep values that themselves contain '=' (e.g. base64 or URL args).
+                    const value = parts.slice(1).join('=');
+
+                    acc[key] = value;
                 
                     return acc;
                 }, {});
@@ -84,7 +81,7 @@ const dialServer = new dial.Server({
                 app.launch(launchData);
                 app.state = "running";
             }
-            callback(app.pid);
+            callback(app ? app.pid : null);
         },
         stopApp(appName, pid, callback) {
             console.log(`Got request to stop ${appName} with pid: ${pid}`);
