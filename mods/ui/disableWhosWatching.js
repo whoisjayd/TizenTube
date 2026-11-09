@@ -10,6 +10,12 @@ configChangeEmitter.addEventListener('configChange', (event) => {
 let interval;
 
 function disableWhosWatching(value) {
+    // Always stop a previous keep-alive ticker first. Otherwise turning the menu off (or
+    // re-applying the setting) leaves the old interval resetting lastFired every minute.
+    if (interval) {
+        clearInterval(interval);
+        interval = null;
+    }
     const storedActions = localStorage['yt.leanback.default::recurring_actions'];
     if (!storedActions) return;
 
@@ -53,7 +59,7 @@ function disableWhosWatching(value) {
             date.setDate(date.getDate() - 7);
             setActions();
             interval = setInterval(setActions, 60 * 1000);
-        } else if (interval) clearInterval(interval);
+        }
     }
 }
 

@@ -62,9 +62,11 @@ function applyPatches() {
             }
         }
 
+        // If YouTube changes its minified code a lookup below may find nothing. That must
+        // degrade to "no custom button", not throw from the player's constructor.
         const settingActionGroup = functions.find(func => {
             return func.rhs.includes('TRANSPORT_CONTROLS_BUTTON_TYPE_PLAYBACK_SETTINGS');
-        }).left.split('.')[1];
+        })?.left.split('.')[1];
 
         if (!settingActionGroup) return inst;
 
@@ -86,7 +88,7 @@ function applyPatches() {
                     return true;
                 }
             }
-        }).left.split('.')[1];
+        })?.left.split('.')[1];
 
         const nextButtonName = functions.find(func => {
             if (func.rhs.includes('skipPreviousButton')) {
@@ -96,9 +98,9 @@ function applyPatches() {
                     return true;
                 }
             }
-        }).left.split('.')[1];
+        })?.left.split('.')[1];
 
-        const engagementActionButton = functions.find(func => func.rhs.includes('props.data.engagementActions')).left.split('.')[1];
+        const engagementActionButton = functions.find(func => func.rhs.includes('props.data.engagementActions'))?.left.split('.')[1];
 
         if (engagementActionButton && configRead('enableSpeedControlsButton')) {
             const origEngagementActionButton = inst[engagementActionButton];
@@ -124,7 +126,7 @@ function applyPatches() {
             }
         }
 
-        if (!configRead('enableSuperThanksButton')) {
+        if (engagementActionButton && !configRead('enableSuperThanksButton')) {
             const origEngagementActionButton = inst[engagementActionButton];
             inst[engagementActionButton] = function () {
                 const res = origEngagementActionButton.apply(this, arguments);
@@ -134,7 +136,7 @@ function applyPatches() {
             }
         }
 
-        if (!configRead('enableAIAskButton')) {
+        if (engagementActionButton && !configRead('enableAIAskButton')) {
             const origEngagementActionButton = inst[engagementActionButton];
             inst[engagementActionButton] = function () {
                 const res = origEngagementActionButton.apply(this, arguments);

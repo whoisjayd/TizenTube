@@ -156,7 +156,9 @@ function execute_once_dom_loaded() {
     if (evt.keyCode in keys) {
       const percentage = keys[evt.keyCode] * 10;
       const video = document.querySelector('video');
-      video.currentTime = (percentage / 100) * video.duration;
+      if (video && isFinite(video.duration)) {
+        video.currentTime = (percentage / 100) * video.duration;
+      }
     }
 
     const container = document.getElementById('container');
@@ -174,11 +176,11 @@ function execute_once_dom_loaded() {
       if (keyTimeout) {
         clearTimeout(keyTimeout);
       }
-      container.style.setProperty('opacity', '1', 'important');
+      container?.style.setProperty('opacity', '1', 'important');
       keyTimeout = setTimeout(() => {
         const videoPlayer = document.querySelector('.html5-video-player');
-        const playerStateObject = videoPlayer.getPlayerStateObject();
-        if (playerStateObject.isPlaying) return;
+        const playerStateObject = videoPlayer?.getPlayerStateObject?.();
+        if (!container || playerStateObject?.isPlaying) return;
         container.style.setProperty('opacity', (1 - configRead('dimmingOpacity')).toString(), 'important');
       }, configRead('dimmingTimeout') * 1000);
     }
@@ -231,7 +233,17 @@ function execute_once_dom_loaded() {
 
   if (configRead('reloadHomeOnStartup')) {
     if (configRead('launchToOnStartup')) {
-      resolveCommand(JSON.parse(configRead('launchToOnStartup')));
+      try {
+        resolveCommand(JSON.parse(configRead('launchToOnStartup')));
+      } catch (e) {
+        // A corrupt stored command must not abort the rest of the startup.
+        console.warn('Invalid launchToOnStartup, reloading home instead:', e);
+        resolveCommand({
+          signalAction: {
+            signal: 'SOFT_RELOAD_PAGE'
+          }
+        });
+      }
     } else {
       resolveCommand({
         signalAction: {
