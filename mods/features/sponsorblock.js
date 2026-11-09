@@ -2,6 +2,7 @@ import sha256 from '../tiny-sha256.js';
 import { configRead } from '../config.js';
 import { showToast } from '../ui/ytUI.js';
 import { t } from 'i18next';
+import { filterShortSegments } from '../utils/sponsorSegments.js';
 
 // Copied from https://github.com/ajayyy/SponsorBlock/blob/da1a535de784540ee10166a75a3eb8537073838c/src/config.ts#L113-L134
 const barTypes = {
@@ -102,7 +103,11 @@ class SponsorBlockHandler {
       return;
     }
 
-    this.segments = result.segments;
+    this.segments = filterShortSegments(result.segments, configRead('sponsorBlockMinSegmentSeconds'));
+    if (!this.segments.length) {
+      console.info(this.videoID, 'All segments shorter than the minimum length.');
+      return;
+    }
     this.manualSkippableCategories = configRead('sponsorBlockManualSkips');
     this.skippableCategories = this.getSkippableCategories();
 

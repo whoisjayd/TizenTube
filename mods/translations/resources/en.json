@@ -33,7 +33,12 @@
                         "music_offtopic": "Skip Off-Topic Music Segments",
                         "highlights": "Enable Highlights"
                     },
-                    "showSBToasts": "Show SponsorBlock Toasts"
+                    "showSBToasts": "Show SponsorBlock Toasts",
+                    "minSegmentLength": {
+                        "title": "Ignore Short Segments",
+                        "subtitle": "Don't skip segments shorter than this",
+                        "off": "Off (skip all)"
+                    }
                 }
             },
             "dearrow": {
@@ -144,6 +149,24 @@
                                 "subtitle": "Set the percentage threshold for hiding watched videos"
                             },
                             "setPagesToHideWatchedVideos": "Set Pages to Hide Watched Videos"
+                        }
+                    },
+                    "trueBlackBackground": "True Black Background",
+                    "rememberSpeedPerChannel": "Remember Speed Per Channel",
+                    "progressBarColor": {
+                        "title": "Progress Bar Color",
+                        "subtitle": "Choose the color of the video progress bar",
+                        "colors": {
+                            "default": "Default",
+                            "red": "Red",
+                            "orange": "Orange",
+                            "yellow": "Yellow",
+                            "green": "Green",
+                            "cyan": "Cyan",
+                            "blue": "Blue",
+                            "purple": "Purple",
+                            "pink": "Pink",
+                            "white": "White"
                         }
                     },
                     "screenDimming": {
