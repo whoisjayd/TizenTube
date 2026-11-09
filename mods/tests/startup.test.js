@@ -180,6 +180,7 @@ test('ads nested in playerResponse (object or array) are stripped', () => {
     ])}')`, context);
     assert.equal(arr[0].playerResponse.adPlacements.length, 0);
     assert.equal(arr[0].playerResponse.adSlots.length, 0);
+});
 
 test('row continuation tiles get previews and a tile without a watch endpoint does not abort parsing', () => {
     const { context } = page('loaded');
