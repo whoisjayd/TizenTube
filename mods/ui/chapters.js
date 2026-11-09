@@ -3,19 +3,21 @@ import { t } from 'i18next';
 function parseTimestamps(input) {
     var lines = input.trim().split('\n');
     var result = [];
-    var timestampRegex = /^\d+:\d{2}/;
+    // m:ss or h:mm:ss. The old /^\d+:\d{2}/ matched only the first two groups of
+    // "1:02:30", turning a 1h02m30s chapter into 1m02s.
+    var timestampRegex = /^(\d+):(\d{2})(?::(\d{2}))?(?![\d:])/;
 
     for (var i = 0; i < lines.length; i++) {
-        var line = lines[i];
+        var line = lines[i].trim();
         var match = line.match(timestampRegex);
         if (match) {
-            var timePart = match[0];
             var parts = line.split(' ');
             parts.shift();
-            var timeParts = timePart.split(':');
-            var minutes = parseInt(timeParts[0], 10);
-            var seconds = parseInt(timeParts[1], 10);
-            var milliseconds = (minutes * 60 + seconds) * 1000;
+            var hasHours = match[3] !== undefined;
+            var hours = hasHours ? parseInt(match[1], 10) : 0;
+            var minutes = parseInt(hasHours ? match[2] : match[1], 10);
+            var seconds = parseInt(hasHours ? match[3] : match[2], 10);
+            var milliseconds = ((hours * 60 + minutes) * 60 + seconds) * 1000;
             var name = parts.join(' ');
             result.push({ time: milliseconds, name: name });
         }
@@ -119,6 +121,8 @@ function markerEntity(videoID, markers) {
         }
     }
 }
+
+export { parseTimestamps };
 
 export default function Chapters(video) {
     const videoID = video.contents.singleColumnWatchNextResults.results.results.contents[0].itemSectionRenderer.contents[0].videoMetadataRenderer.videoId;

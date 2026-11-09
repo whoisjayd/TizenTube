@@ -8,6 +8,8 @@ function getCommandExecutor() {
             else {
                 let isInstance = false;
                 const tempInstance = window._yttv[key].getInstance();
+                // getInstance() can return nothing; getPrototypeOf(undefined) would throw.
+                if (!tempInstance) continue;
                 const keys = Object.getOwnPropertyNames(Object.getPrototypeOf(tempInstance));
                 for (const key of keys) {
                     if (typeof tempInstance[key] === 'function' && tempInstance[key].toString().includes('ytlrActionRouter')) {

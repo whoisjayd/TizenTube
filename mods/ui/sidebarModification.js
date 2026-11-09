@@ -108,6 +108,7 @@ function showSetting(settingType, parameters) {
         const guideItems = guide.items[0].guideSectionRenderer.originalItems
             || guide.items[0].guideSectionRenderer.items;
         for (const item of guideItems) {
+            if (!item.guideEntryRenderer?.formattedTitle) continue;
             const title = item.guideEntryRenderer.formattedTitle.simpleText;
             const icon = item.guideEntryRenderer.icon?.iconType;
             const browseId = item.guideEntryRenderer.navigationEndpoint?.browseEndpoint ? item.guideEntryRenderer.navigationEndpoint.browseEndpoint.browseId : 'search';
