@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "rollup -c rollup.config.js",
-    "test": "npm run build && node --test tests/*.test.js"
+    "test": "npm run build && node --experimental-vm-modules --test tests/*.test.js"
   },
   "keywords": [],
   "author": "Reis Can, YouTube WebOs contributors",
