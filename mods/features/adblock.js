@@ -15,6 +15,15 @@ import { t } from 'i18next';
  *
  * Seems like for now dropping just the adPlacements is enough for YouTube TV
  */
+function stripPlayerAds(obj) {
+  if (!obj || typeof obj !== 'object') return;
+  if (obj.adPlacements) obj.adPlacements = [];
+  // Also set playerAds to false, just incase.
+  if (obj.playerAds) obj.playerAds = false;
+  // Also set adSlots to an empty array, emptying only the adPlacements won't work.
+  if (obj.adSlots) obj.adSlots = [];
+}
+
 const origParse = JSON.parse;
 JSON.parse = function () {
   const r = origParse.apply(this, arguments);
@@ -27,18 +36,14 @@ JSON.parse = function () {
       console.log(r.playbackContext.contentPlaybackContext);
     }
 
-    if (r.adPlacements && adBlockEnabled) {
-      r.adPlacements = [];
-    }
-
-    // Also set playerAds to false, just incase.
-    if (r.playerAds && adBlockEnabled) {
-      r.playerAds = false;
-    }
-
-    // Also set adSlots to an empty array, emptying only the adPlacements won't work.
-    if (r.adSlots && adBlockEnabled) {
-      r.adSlots = [];
+    if (adBlockEnabled) {
+      stripPlayerAds(r);
+      // Some endpoints (e.g. get_watch) nest the player response, either directly
+      // or inside an array. Same paths as the uBlock Origin json-prune rule.
+      stripPlayerAds(r?.playerResponse);
+      if (Array.isArray(r)) {
+        for (const entry of r) stripPlayerAds(entry?.playerResponse);
+      }
     }
 
     if (r.paidContentOverlay && !configRead('enablePaidPromotionOverlay')) {
@@ -338,10 +343,35 @@ window.JSON.stringify = JSON.stringify;
 
 // Patch JSON.parse to use the custom one
 window.JSON.parse = JSON.parse;
-for (const key in window._yttv) {
-  if (window._yttv[key] && window._yttv[key].JSON && window._yttv[key].JSON.parse) {
-    window._yttv[key].JSON.parse = JSON.parse;
+
+// YouTube may keep its own reference to JSON in window._yttv, and that object can be
+// populated after this script runs (or get its parse restored), which would let ad
+// responses bypass the filter until the app is restarted. Re-apply the patch for a while.
+function patchYttvJson() {
+  for (const key in window._yttv) {
+    const yttvJSON = window._yttv[key]?.JSON;
+    if (yttvJSON && yttvJSON.parse && yttvJSON.parse !== JSON.parse) {
+      yttvJSON.parse = JSON.parse;
+    }
   }
+}
+patchYttvJson();
+let yttvPatchRuns = 0;
+const yttvPatchTimer = setInterval(() => {
+  patchYttvJson();
+  if (++yttvPatchRuns >= 60) clearInterval(yttvPatchTimer);
+}, 1000);
+
+// fetch().json() does not go through JSON.parse, so innertube responses read that way
+// would skip the filter. Route them through the patched parser.
+if (window.Response?.prototype?.json) {
+  const origResponseJson = window.Response.prototype.json;
+  window.Response.prototype.json = function () {
+    if (typeof this.url === 'string' && this.url.includes('/youtubei/v1/')) {
+      return this.text().then((text) => JSON.parse(text));
+    }
+    return origResponseJson.apply(this, arguments);
+  };
 }
 
 
