@@ -1,4 +1,5 @@
-import { configRead } from '../config.js';
+import { configRead, cloneJSON } from '../config.js';
+import { applyFormatPreferences } from '../utils/formatPreferences.js';
 import Chapters from '../ui/chapters.js';
 import resolveCommand from '../resolveCommand.js';
 import { timelyAction, longPressData, MenuServiceItemRenderer, ShelfRenderer, TileRenderer, ButtonRenderer } from '../ui/ytUI.js';
@@ -29,6 +30,8 @@ function stripPlayerAds(obj) {
 const origParse = JSON.parse;
 JSON.parse = function () {
   const r = origParse.apply(this, arguments);
+  // Primitives and null can't carry any of the structures handled below.
+  if (r === null || typeof r !== 'object') return r;
   try {
     const adBlockEnabled = configRead('enableAdBlock');
     const signinReminderEnabled = configRead('enableSigninReminder');
@@ -52,15 +55,14 @@ JSON.parse = function () {
       r.paidContentOverlay = null;
     }
 
-    if (r?.streamingData?.adaptiveFormats && configRead('preferredVideoCodec') !== 'any') {
-      const preferredCodec = configRead('preferredVideoCodec');
-      const hasPreferredCodec = r.streamingData.adaptiveFormats.find(format => format.mimeType.includes(preferredCodec));
-      if (hasPreferredCodec) {
-        r.streamingData.adaptiveFormats = r.streamingData.adaptiveFormats.filter(format => {
-          if (format.mimeType.startsWith('audio/')) return true;
-          return format.mimeType.includes(preferredCodec);
-        });
-      }
+    if (Array.isArray(r?.streamingData?.adaptiveFormats)) {
+      r.streamingData.adaptiveFormats = applyFormatPreferences(r.streamingData.adaptiveFormats, {
+        videoCodec: configRead('preferredVideoCodec'),
+        audioCodec: configRead('preferredAudioCodec'),
+        audioQuality: configRead('preferredAudioQuality'),
+        maxResolution: configRead('maxVideoResolution'),
+        preferHighFrameRate: configRead('preferHighFrameRate')
+      });
     }
 
     // Drop "masthead" ad from home screen
@@ -426,7 +428,7 @@ function addPreviews(items) {
       const watchEndpoint = item.tileRenderer.onSelectCommand;
       // Only videos can be previewed; a tile without a watch endpoint must not abort the whole response.
       if (!watchEndpoint?.watchEndpoint) continue;
-      const copiedEndpoint = JSON.parse(JSON.stringify(watchEndpoint));
+      const copiedEndpoint = cloneJSON(watchEndpoint);
       item.tileRenderer.onFocusCommand = {
         startInlinePlaybackCommand: {
           blockAdoption: true,
@@ -488,7 +490,7 @@ function addLongPress(items) {
     if (item?.tileRenderer?.style !== 'TILE_STYLE_YTLR_DEFAULT' && item?.lockupViewModel?.contentType !== 'LOCKUP_CONTENT_TYPE_VIDEO') continue;
     if (item?.tileRenderer?.onLongPressCommand?.showMenuCommand?.menu?.menuRenderer?.items
       || item?.lockupViewModel?.rendererContext?.commandContext?.onLongPress?.innertubeCommand?.showMenuCommand?.menu?.menuRenderer?.items) {
-      const copiedItem = JSON.parse(JSON.stringify(item));
+      const copiedItem = cloneJSON(item);
       const button = MenuServiceItemRenderer(t('videoMenu.addToQueue'), {
         clickTrackingParams: null,
         playlistEditEndpoint: {
@@ -510,7 +512,7 @@ function addLongPress(items) {
       !item.lockupViewModel?.contentImage?.thumbnailViewModel?.image?.sources) continue;
     if (!item?.tileRenderer?.onSelectCommand?.watchEndpoint &&
       !item?.lockupViewModel?.rendererContext?.commandContext?.onTap?.innertubeCommand?.watchEndpoint) continue;
-    const copiedItem = JSON.parse(JSON.stringify(item));
+    const copiedItem = cloneJSON(item);
     const subtitleNode = copiedItem?.tileRenderer ? copiedItem.tileRenderer.metadata?.tileMetadataRenderer?.lines?.[0]?.lineRenderer?.items?.[0]?.lineItemRenderer?.text :
       copiedItem.lockupViewModel.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content
     ;

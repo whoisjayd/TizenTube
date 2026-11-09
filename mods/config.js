@@ -56,6 +56,10 @@ const defaultConfig = {
   enablePaidPromotionOverlay: true,
   speedSettingsIncrement: 0.25,
   preferredVideoCodec: 'any',
+  preferredAudioCodec: 'any',
+  preferredAudioQuality: 'auto',
+  maxVideoResolution: 'auto',
+  preferHighFrameRate: false,
   launchToOnStartup: null,
   reloadHomeOnStartup: true,
   disabledSidebarContents: [],
@@ -89,6 +93,11 @@ try {
 // Valid JSON such as "null", a number or an array would otherwise break every configRead.
 if (!localConfig || typeof localConfig !== 'object' || Array.isArray(localConfig)) {
   localConfig = {};
+}
+
+// Deep-clones plain JSON data without going through patched JSON.parse hooks.
+export function cloneJSON(value) {
+  return nativeJSONParse(JSON.stringify(value));
 }
 
 export function configRead(key) {

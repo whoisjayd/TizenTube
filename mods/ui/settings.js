@@ -437,6 +437,62 @@ export default function modernUI(update, parameters) {
                         }
                     })
                 },
+                {
+                    name: t('settings.options.videoPlayer.options.preferredAudioCodec.title'),
+                    icon: 'VIDEO_QUALITY',
+                    value: null,
+                    menuId: 'tt-preferred-audio-codec',
+                    menuHeader: {
+                        title: t('settings.options.videoPlayer.options.preferredAudioCodec.title'),
+                        subtitle: t('settings.options.videoPlayer.options.preferredAudioCodec.subtitle'),
+                    },
+                    options: ['any', 'opus', 'mp4a'].map((codec) => {
+                        return {
+                            name: codec === 'any' ? t('settings.options.videoPlayer.options.codecAny') : codec.toUpperCase(),
+                            key: 'preferredAudioCodec',
+                            value: codec
+                        }
+                    })
+                },
+                {
+                    name: t('settings.options.videoPlayer.options.preferredAudioQuality.title'),
+                    icon: 'VIDEO_QUALITY',
+                    value: null,
+                    menuId: 'tt-preferred-audio-quality',
+                    menuHeader: {
+                        title: t('settings.options.videoPlayer.options.preferredAudioQuality.title'),
+                        subtitle: t('settings.options.videoPlayer.options.preferredAudioQuality.subtitle'),
+                    },
+                    options: ['auto', 'highest'].map((quality) => {
+                        return {
+                            name: t(`settings.options.videoPlayer.options.preferredAudioQuality.${quality}`),
+                            key: 'preferredAudioQuality',
+                            value: quality
+                        }
+                    })
+                },
+                {
+                    name: t('settings.options.videoPlayer.options.maxVideoResolution.title'),
+                    icon: 'VIDEO_QUALITY',
+                    value: null,
+                    menuId: 'tt-max-video-resolution',
+                    menuHeader: {
+                        title: t('settings.options.videoPlayer.options.maxVideoResolution.title'),
+                        subtitle: t('settings.options.videoPlayer.options.maxVideoResolution.subtitle'),
+                    },
+                    options: ['auto', '2160', '1440', '1080', '720', '480'].map((resolution) => {
+                        return {
+                            name: resolution === 'auto' ? t('settings.options.videoPlayer.options.maxVideoResolution.auto') : `${resolution}p`,
+                            key: 'maxVideoResolution',
+                            value: resolution
+                        }
+                    })
+                },
+                {
+                    name: t('settings.options.videoPlayer.options.preferHighFrameRate'),
+                    icon: 'SLOW_MOTION_VIDEO',
+                    value: 'preferHighFrameRate'
+                },
                 window.h5vcc && window.h5vcc.tizentube && window.h5vcc.tizentube.SetFrameRate ? {
                     name: t('settings.options.videoPlayer.options.afr'),
                     icon: 'SLOW_MOTION_VIDEO',

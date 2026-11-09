@@ -103,6 +103,22 @@
                         "title": "Preferred Video Codec",
                         "subtitle": "Choose the preferred video codec for playback"
                     },
+                    "preferredAudioCodec": {
+                        "title": "Preferred Audio Codec",
+                        "subtitle": "Choose the preferred audio codec. Falls back automatically if a video does not offer it"
+                    },
+                    "preferredAudioQuality": {
+                        "title": "Audio Quality",
+                        "subtitle": "Highest only plays the best bitrate audio track and never switches down",
+                        "auto": "Auto",
+                        "highest": "Highest"
+                    },
+                    "maxVideoResolution": {
+                        "title": "Maximum Resolution",
+                        "subtitle": "Limit the highest resolution offered to the player. Ignored if no lower resolution exists",
+                        "auto": "No limit"
+                    },
+                    "preferHighFrameRate": "Prefer 60 FPS",
                     "afr": "Auto Frame Rate",
                     "afrPauseDuration": {
                         "title": "Auto Frame Rate Pause Duration",
