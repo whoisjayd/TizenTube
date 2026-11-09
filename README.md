@@ -44,6 +44,7 @@ Follow the guide in the [Installation Guide](./docs/README.md).
 - 🔍 **Voice search** through the standalone proxy
 - 🎨 **Progress-bar colour** and **true-black background** options
 - ⏩ **Per-channel playback speed** and **ignore short SponsorBlock segments**
+- 🎧 **Audio and video quality controls**: preferred audio codec, highest audio bitrate, max resolution, prefer 60 FPS
 - 🔧 **Hardened startup** for early injection and corrupt saved settings
 
 ## 🛠️ Development

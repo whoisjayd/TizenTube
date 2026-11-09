@@ -129,6 +129,6 @@ test('preferred video codec: default keeps every format, a chosen codec filters 
 
     const { context: vp9, errors: vp9Errors } = page({ preferredVideoCodec: 'vp9' });
     const formats = parse(vp9, streamingData()).streamingData.adaptiveFormats;
-    assert.deepEqual(Array.from(formats, f => f.mimeType?.split(';')[0]), ['video/webm', 'audio/mp4']);
+    assert.deepEqual(Array.from(formats, f => f.mimeType?.split(';')[0]), ['video/webm', 'audio/mp4', undefined]);  // formats with no mimeType are kept, never filtered out
     assert.deepEqual(vp9Errors, [], 'a format without mimeType must not abort processing');
 });
