@@ -7,6 +7,7 @@ import { deArrowItem } from './deArrow.js';
 import { getVideoId, getChannelInfo, removeBlocked } from '../utils/blocklist.js';
 import { PatchSettings } from '../ui/customYTSettings.js';
 import { t } from 'i18next';
+import { setCurrentChannelId } from '../utils/channelSpeed.js';
 
 /**
  * This is a minimal reimplementation of the following uBlock Origin rule:
@@ -34,6 +35,8 @@ JSON.parse = function () {
   try {
     const adBlockEnabled = configRead('enableAdBlock');
     const signinReminderEnabled = configRead('enableSigninReminder');
+
+    if (r?.videoDetails?.channelId) setCurrentChannelId(r.videoDetails.channelId);
 
     if (r?.playbackContext?.contentPlaybackContext) {
       // Handle inline playback without ads

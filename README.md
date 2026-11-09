@@ -42,6 +42,8 @@ Follow the guide in the [Installation Guide](./docs/README.md).
 - 🚫 **Block channels** from video menus
 - 🎞️ **Video previews on every row**, including scrolled-in tiles
 - 🔍 **Voice search** through the standalone proxy
+- 🎨 **Progress-bar colour** and **true-black background** options
+- ⏩ **Per-channel playback speed** and **ignore short SponsorBlock segments**
 - 🔧 **Hardened startup** for early injection and corrupt saved settings
 
 ## 🛠️ Development

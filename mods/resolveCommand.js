@@ -6,6 +6,7 @@ import { showToast, buttonItem, showModal, QrCodeRenderer, overlayPanelItemListR
 import checkForUpdates from './features/updater.js';
 import { startUpdate } from './features/updateDownload.js';
 import { t } from 'i18next';
+import { rememberSpeedForCurrentChannel } from './utils/channelSpeed.js';
 import { requestNextAndNavigateChannel, getFeedbackPanelTokens, sendFeedbackToken } from './utils/innerTubeCalls.js';
 import qrcode from 'qrcode-npm';
 import showGuideSettings from './ui/sidebarModification.js';
@@ -264,6 +265,7 @@ function customAction(action, parameters) {
         case 'SET_PLAYER_SPEED':
             const speed = Number(parameters);
             document.querySelector('video').playbackRate = speed;
+            rememberSpeedForCurrentChannel(speed);
             break;
         case 'ENTER_MP':
             enablePip();
