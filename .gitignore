@@ -3,3 +3,4 @@ node_modules/
 *.wgt
 .sign
 package-lock.json
+.claude/worktrees/

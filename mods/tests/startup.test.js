@@ -180,4 +180,18 @@ test('ads nested in playerResponse (object or array) are stripped', () => {
     ])}')`, context);
     assert.equal(arr[0].playerResponse.adPlacements.length, 0);
     assert.equal(arr[0].playerResponse.adSlots.length, 0);
+
+test('row continuation tiles get previews and a tile without a watch endpoint does not abort parsing', () => {
+    const { context } = page('loaded');
+    context.response = JSON.stringify({
+        continuationContents: { horizontalListContinuation: { items: [
+            { tileRenderer: { onSelectCommand: { browseEndpoint: { browseId: 'UC1' } } } },
+            { tileRenderer: {} },
+            { tileRenderer: { onSelectCommand: { watchEndpoint: { videoId: 'abc' } } } },
+        ] } },
+    });
+    const items = vm.runInContext('JSON.parse(response)', context).continuationContents.horizontalListContinuation.items;
+    const preview = items.find(i => i.tileRenderer?.onSelectCommand?.watchEndpoint)
+        .tileRenderer.onFocusCommand?.startInlinePlaybackCommand;
+    assert.equal(preview?.playbackEndpoint?.watchEndpoint?.videoId, 'abc');
 });

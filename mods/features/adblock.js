@@ -143,6 +143,8 @@ JSON.parse = function () {
       deArrowify(r.continuationContents.horizontalListContinuation.items);
       hqify(r.continuationContents.horizontalListContinuation.items);
       addLongPress(r.continuationContents.horizontalListContinuation.items);
+      // Later tiles of a row arrive through this continuation; without this they had no preview.
+      addPreviews(r.continuationContents.horizontalListContinuation.items);
       r.continuationContents.horizontalListContinuation.items = hideVideo(r.continuationContents.horizontalListContinuation.items);
     }
 
@@ -414,10 +416,12 @@ function addPreviews(items) {
   if (!configRead('enablePreviews')) return;
   for (const item of items) {
     if (item.tileRenderer) {
-      const watchEndpoint = item.tileRenderer.onSelectCommand;
-      const copiedEndpoint = JSON.parse(JSON.stringify(watchEndpoint));
       if (item.tileRenderer?.onFocusCommand?.playbackEndpoint) continue;
       if (item.tileRenderer?.onFocusCommand?.commandExecutorCommand) continue;
+      const watchEndpoint = item.tileRenderer.onSelectCommand;
+      // Only videos can be previewed; a tile without a watch endpoint must not abort the whole response.
+      if (!watchEndpoint?.watchEndpoint) continue;
+      const copiedEndpoint = JSON.parse(JSON.stringify(watchEndpoint));
       item.tileRenderer.onFocusCommand = {
         startInlinePlaybackCommand: {
           blockAdoption: true,
