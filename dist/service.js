@@ -50425,12 +50425,9 @@ var dialServer = new dial.Server({
         var parsedData = launchData.split('&').reduce(function (acc, cur) {
           var parts = cur.split('=');
           var key = parts[0];
-          var value = parts[1];
-          if (typeof value !== 'undefined') {
-            acc[key] = value;
-          } else {
-            acc[key] = '';
-          }
+          // Keep values that themselves contain '=' (e.g. base64 or URL args).
+          var value = parts.slice(1).join('=');
+          acc[key] = value;
           return acc;
         }, {});
         if (parsedData.yumi) {
@@ -50444,7 +50441,7 @@ var dialServer = new dial.Server({
         app.launch(launchData);
         app.state = "running";
       }
-      callback(app.pid);
+      callback(app ? app.pid : null);
     },
     stopApp: function stopApp(appName, pid, callback) {
       console.log("Got request to stop ".concat(appName, " with pid: ").concat(pid));
