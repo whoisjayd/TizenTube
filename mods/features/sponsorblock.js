@@ -92,9 +92,17 @@ class SponsorBlockHandler {
         JSON.stringify(categories)
       )}`
     );
+    // The API answers 404 (plain text body) when a video has no segments.
+    if (!resp.ok) {
+      console.info(this.videoID, 'No segments found.');
+      return;
+    }
     const results = await resp.json();
 
-    const result = results.find((v) => v.videoID === this.videoID);
+    // The video may have changed while the request was in flight.
+    if (!this.active) return;
+
+    const result = Array.isArray(results) && results.find((v) => v.videoID === this.videoID);
     console.info(this.videoID, 'Got it:', result);
 
     if (!result || !result.segments || !result.segments.length) {
@@ -110,7 +118,7 @@ class SponsorBlockHandler {
       const slider = document.querySelector('div[idomkey="slider"]');
       const sliderRect = slider?.getBoundingClientRect();
       const isOldUI = !document.querySelector('div[idomkey="Metadata-Section"]');
-      if (isOldUI && sliderRect) {
+      if (isOldUI && sliderRect && this.segmentsoverlay) {
         this.segmentsoverlay.style.setProperty('top', `${sliderRect.top}px`, 'important');
       }
       this.scheduleSkip();
@@ -170,6 +178,8 @@ class SponsorBlockHandler {
   }
 
   buildOverlay() {
+    if (!this.active) return;
+
     if (this.segmentsoverlay) {
       console.info('Overlay already built');
       return;
@@ -231,7 +241,7 @@ class SponsorBlockHandler {
           }
         }
 
-        if (document.querySelector('ytlr-progress-bar').getAttribute('hybridnavfocusable') === 'false') {
+        if (document.querySelector('ytlr-progress-bar')?.getAttribute('hybridnavfocusable') === 'false') {
           this.segmentsoverlay.style.setProperty('display', 'none', 'important');
         } else {
           this.segmentsoverlay.style.setProperty('display', 'block', 'important');
@@ -427,7 +437,9 @@ window.addEventListener(
 
       if (configRead('enableSponsorBlock')) {
         window.sponsorblock = new SponsorBlockHandler(videoID);
-        window.sponsorblock.init();
+        window.sponsorblock.init().catch((err) => {
+          console.warn('SponsorBlock init failed:', err);
+        });
       } else {
         console.info('SponsorBlock disabled, not loading');
       }

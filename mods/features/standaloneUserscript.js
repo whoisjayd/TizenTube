@@ -63,10 +63,12 @@ export default function () {
                     return originalFetch(targetUrl, modifiedOptions);
                 }
 
-                input = new Request(targetUrl, input);
+                // Keep the Request object: passing only the URL dropped its method, headers and body.
+                return originalFetch.call(this, new Request(targetUrl, input), init);
             }
 
-            return originalFetch.apply(this, [targetUrl, init]);
+            // Inputs that are neither a string, URL nor Request (targetUrl stays '') go through unchanged.
+            return originalFetch.call(this, targetUrl || input, init);
         };
     }
 
@@ -92,16 +94,17 @@ export default function () {
         };
     }
 
-    Object.defineProperty(HTMLImageElement.prototype, 'src', {
-        set: function(value) {
-            const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'setAttribute');
-            descriptor.value.call(this, 'src', redirectUrl(value));
-        }
-    });
-    Object.defineProperty(HTMLScriptElement.prototype, 'src', {
-        set: function(value) {
-            const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'setAttribute');
-            descriptor.value.call(this, 'src', redirectUrl(value));
-        }
+    // Keep the original getter: defining only a setter made `element.src` read as undefined.
+    [HTMLImageElement, HTMLScriptElement].forEach(function (ElementClass) {
+        const original = Object.getOwnPropertyDescriptor(ElementClass.prototype, 'src');
+        Object.defineProperty(ElementClass.prototype, 'src', {
+            configurable: true,
+            enumerable: original ? original.enumerable : true,
+            get: original && original.get,
+            set: function (value) {
+                const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'setAttribute');
+                descriptor.value.call(this, 'src', redirectUrl(value));
+            }
+        });
     });
 }

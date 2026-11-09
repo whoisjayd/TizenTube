@@ -5,6 +5,8 @@ import { GuideEntryRenderer } from "./ytUI.js";
 const origParse = JSON.parse;
 JSON.parse = function () {
     const r = origParse.apply(this, arguments);
+    // JSON.parse('null') or a primitive: nothing to patch (and r.items would throw on null).
+    if (!r || typeof r !== 'object') return r;
     const guideSection = r.items?.[0]?.guideSectionRenderer;
     if (guideSection && !configRead('enableShorts')) {
         guideSection.items = guideSection.items.filter(item =>
@@ -28,7 +30,7 @@ JSON.parse = function () {
     }
     if (configRead('sidebarContentsOrder')?.length === 0) {
        // Add all of the items in the sidebar to the sidebarContentsOrder
-        if (r.items && Array.isArray(r.items) && r.items[0].guideSectionRenderer) {
+        if (r.items && Array.isArray(r.items) && r.items[0]?.guideSectionRenderer) {
             const order = [];
             for (const item of r.items[0].guideSectionRenderer.items) {
                 const browseId = item.guideEntryRenderer?.navigationEndpoint?.browseEndpoint?.browseId;
@@ -43,7 +45,7 @@ JSON.parse = function () {
     } else {
         // Reorder the items based on the sidebarContentsOrder config key
 
-        if (r.items && Array.isArray(r.items) && r.items[0].guideSectionRenderer) {
+        if (r.items && Array.isArray(r.items) && r.items[0]?.guideSectionRenderer) {
             const order = configRead('sidebarContentsOrder');
             const items = r.items[0].guideSectionRenderer.items;
             const copiedItems = JSON.parse(JSON.stringify(items));
@@ -91,9 +93,10 @@ JSON.parse = function () {
 
     const disabledSidebarContents = configRead('disabledSidebarContents');
     const disableChannelsOnSidebar = configRead('disableChannelsOnSidebar');
-    if (r.items && Array.isArray(r.items) && r.items[0].guideSectionRenderer) {
+    if (r.items && Array.isArray(r.items) && r.items[0]?.guideSectionRenderer) {
         for (let i = 0; i < r.items.length; i++) {
             const section = r.items[i].guideSectionRenderer;
+            if (!section) continue;
             section.originalItems = section.items.slice();
             for (let j = 0; j < section.items.length; j++) {
                 const item = section.items[j].guideEntryRenderer;
