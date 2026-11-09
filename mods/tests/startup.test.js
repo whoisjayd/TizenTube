@@ -164,3 +164,18 @@ test('enabling the account picker tolerates a missing legacy action', () => {
     assertCoreFeatures(context);
     assert.ok(JSON.parse(storage[actionsKey]).data.data['startup-screen-signed-out-welcome-back'].lastFired > 0);
 });
+
+test('row continuation tiles get previews and a tile without a watch endpoint does not abort parsing', () => {
+    const { context } = page('loaded');
+    context.response = JSON.stringify({
+        continuationContents: { horizontalListContinuation: { items: [
+            { tileRenderer: { onSelectCommand: { browseEndpoint: { browseId: 'UC1' } } } },
+            { tileRenderer: {} },
+            { tileRenderer: { onSelectCommand: { watchEndpoint: { videoId: 'abc' } } } },
+        ] } },
+    });
+    const items = vm.runInContext('JSON.parse(response)', context).continuationContents.horizontalListContinuation.items;
+    const preview = items.find(i => i.tileRenderer?.onSelectCommand?.watchEndpoint)
+        .tileRenderer.onFocusCommand?.startInlinePlaybackCommand;
+    assert.equal(preview?.playbackEndpoint?.watchEndpoint?.videoId, 'abc');
+});
