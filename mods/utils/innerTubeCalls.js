@@ -44,8 +44,8 @@ function requestNextAndNavigateChannel(params) {
                     if (navigation) resolveCommand(navigation);
                 }
             }
-        });
-    });
+        }, (e) => console.warn('Failed to resolve channel from video:', e));
+    }).catch((e) => console.warn('Failed to get identity for channel lookup:', e));
 }
 
 function getGuide() {
@@ -56,10 +56,10 @@ function getGuide() {
         path: '/youtubei/v1/guide'
     };
 
-    return new Promise((resolve, _) => {
+    return new Promise((resolve, reject) => {
         KabukiInnerTubeClient.fetch(request).subscribe((response) => {
            resolve(response);
-        });
+        }, reject);
     });
 }
 

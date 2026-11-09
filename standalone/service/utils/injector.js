@@ -36,7 +36,8 @@ function connectToDebugger(host, port, args, altHost) {
 
             client.Page.setBypassCSP({ enabled: true });
         });
-        cdp.on('error', retry);
+        // Only retry while connecting; an error after attaching must not start a second session.
+        cdp.on('error', () => { if (!isDebuggerAttached) retry(); });
     }).catch(retry);
 }
 
@@ -45,7 +46,8 @@ function canConnectToDaemon() {
         .then(json => {
             return { canConnectToDaemon: (json.device.developerIP === '127.0.0.1' || json.device.developerIP === '1.0.0.127') && json.device.developerMode === '1', ip: json.device.ip, isConnecting, isDebuggerAttached }
         }).catch(e => {
-            return canConnectToDaemon();
+            // Keep retrying until the daemon answers, but not in a tight loop.
+            return new Promise(resolve => setTimeout(resolve, 250)).then(canConnectToDaemon);
         });
 }
 
