@@ -164,3 +164,20 @@ test('enabling the account picker tolerates a missing legacy action', () => {
     assertCoreFeatures(context);
     assert.ok(JSON.parse(storage[actionsKey]).data.data['startup-screen-signed-out-welcome-back'].lastFired > 0);
 });
+
+test('ads nested in playerResponse (object or array) are stripped', () => {
+    const { context } = page('loaded');
+    const nested = vm.runInContext(`JSON.parse('${JSON.stringify({
+        playerResponse: { adPlacements: [{}], playerAds: [{}], adSlots: [{}], videoDetails: { videoId: 'a' } },
+    })}')`, context);
+    assert.equal(nested.playerResponse.adPlacements.length, 0);
+    assert.equal(nested.playerResponse.playerAds, false);
+    assert.equal(nested.playerResponse.adSlots.length, 0);
+    assert.equal(nested.playerResponse.videoDetails.videoId, 'a');
+
+    const arr = vm.runInContext(`JSON.parse('${JSON.stringify([
+        { playerResponse: { adPlacements: [{}], adSlots: [{}] } }, null, 5,
+    ])}')`, context);
+    assert.equal(arr[0].playerResponse.adPlacements.length, 0);
+    assert.equal(arr[0].playerResponse.adSlots.length, 0);
+});
