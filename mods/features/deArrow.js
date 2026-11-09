@@ -37,8 +37,10 @@ function videoIdOf(item) {
 }
 
 function applyBranding(item, videoID, data) {
-  if (data.titles?.length > 0) {
-    const mostVoted = data.titles.reduce((max, title) => max.votes > title.votes ? max : title);
+  // Like the thumbnails below, a title that was voted down (and is not locked) must not be shown.
+  const usableTitles = data.titles?.filter(title => title.locked || title.votes >= 0) || [];
+  if (usableTitles.length > 0) {
+    const mostVoted = usableTitles.reduce((max, title) => max.votes > title.votes ? max : title);
     item.tileRenderer ?
       item.tileRenderer.metadata.tileMetadataRenderer.title.simpleText = mostVoted.title
       : item.lockupViewModel.metadata.lockupMetadataViewModel.title.content = mostVoted.title;

@@ -2,11 +2,12 @@ import { configRead } from "../config.js";
 
 function attachToVideoPlayer() {
     const player = document.querySelector('.html5-video-player');
-    const video = document.querySelector('video');
     if (!player) return setTimeout(attachToVideoPlayer, 500);
 
     player.addEventListener('onPlaybackStartExternal', () => {
         try {
+            // Looked up per playback: the <video> may not exist yet when the player element is first found.
+            const video = document.querySelector('video');
             if (window.location.href.indexOf('watch') === -1) return;
             const statsForNerds = player.getStatsForNerds();
 
@@ -16,7 +17,7 @@ function attachToVideoPlayer() {
             if (resolutionMatch) {
                 const fps = resolutionMatch[3];
                 if (configRead('autoFrameRate') && window.h5vcc && window.h5vcc.tizentube && window.h5vcc.tizentube.SetFrameRate) {
-                    if (pauseFor > 0) {
+                    if (pauseFor > 0 && video) {
                         video.pause();
                         setTimeout(() => {
                             video.play();

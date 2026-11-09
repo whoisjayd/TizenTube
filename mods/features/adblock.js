@@ -29,6 +29,8 @@ function stripPlayerAds(obj) {
 const origParse = JSON.parse;
 JSON.parse = function () {
   const r = origParse.apply(this, arguments);
+  // null and primitives have nothing to filter; every access below would throw on null.
+  if (!r || typeof r !== 'object') return r;
   try {
     const adBlockEnabled = configRead('enableAdBlock');
     const signinReminderEnabled = configRead('enableSigninReminder');
@@ -52,13 +54,13 @@ JSON.parse = function () {
       r.paidContentOverlay = null;
     }
 
-    if (r?.streamingData?.adaptiveFormats && configRead('preferredVideoCodec') !== 'any') {
-      const preferredCodec = configRead('preferredVideoCodec');
-      const hasPreferredCodec = r.streamingData.adaptiveFormats.find(format => format.mimeType.includes(preferredCodec));
+    const preferredCodec = configRead('preferredVideoCodec');
+    if (r?.streamingData?.adaptiveFormats && preferredCodec && preferredCodec !== 'any') {
+      const hasPreferredCodec = r.streamingData.adaptiveFormats.find(format => format.mimeType?.includes(preferredCodec));
       if (hasPreferredCodec) {
         r.streamingData.adaptiveFormats = r.streamingData.adaptiveFormats.filter(format => {
-          if (format.mimeType.startsWith('audio/')) return true;
-          return format.mimeType.includes(preferredCodec);
+          if (format.mimeType?.startsWith('audio/')) return true;
+          return format.mimeType?.includes(preferredCodec);
         });
       }
     }
@@ -210,9 +212,9 @@ JSON.parse = function () {
         r.contents.singleColumnWatchNextResults.pivot.sectionListRenderer.contents.unshift(ShelfRenderer(
           t('player.queue.title'),
           queuedVideosClone,
-          queuedVideosClone.findIndex(v => v.contentId === window.queuedVideos.lastVideoId) !== -1 ?
-            queuedVideosClone.findIndex(v => v.contentId === window.queuedVideos.lastVideoId)
-            : 0
+          // Queued videos are whole {tileRenderer|lockupViewModel} items, so contentId is nested.
+          Math.max(0, queuedVideosClone.findIndex(v =>
+            (v.tileRenderer?.contentId || v.lockupViewModel?.contentId || v.contentId) === window.queuedVideos.lastVideoId))
         ));
       }
     }
@@ -241,8 +243,8 @@ JSON.parse = function () {
     if (r?.playerOverlays?.playerOverlayRenderer) {
       if (r.playerOverlays.playerOverlayRenderer.timelyActionRenderers) {
         r.playerOverlays.playerOverlayRenderer.timelyActionRenderers =
-          r.playerOverlays.playerOverlayRenderer.timelyActionRenderers.filter(a => a.timelyActionRenderer.type !== 'TIMELY_ACTION_TYPE_SHOPPING' &&
-            a.timelyActionRenderer.type !== 'TIMELY_ACTION_TYPE_NFL_WATERMARK');
+          r.playerOverlays.playerOverlayRenderer.timelyActionRenderers.filter(a => a?.timelyActionRenderer?.type !== 'TIMELY_ACTION_TYPE_SHOPPING' &&
+            a?.timelyActionRenderer?.type !== 'TIMELY_ACTION_TYPE_NFL_WATERMARK');
       } else r.playerOverlays.playerOverlayRenderer.timelyActionRenderers = [];
       if (configRead('sponsorBlockManualSkips').length > 0) {
         const manualSkippedSegments = configRead('sponsorBlockManualSkips');
@@ -301,9 +303,9 @@ JSON.parse = function () {
 
     if (r?.contents?.tvBrowseRenderer?.content?.tvSurfaceContentRenderer?.header?.channelHeaderRenderer?.buttons) {
       let browseId = null;
-      const title = r.contents.tvBrowseRenderer.content.tvSurfaceContentRenderer.header.channelHeaderRenderer.title.simpleText;
-      for (const service of r.responseContext.serviceTrackingParams) {
-        for (const param of service.params) {
+      const title = r.contents.tvBrowseRenderer.content.tvSurfaceContentRenderer.header.channelHeaderRenderer.title?.simpleText;
+      for (const service of r.responseContext?.serviceTrackingParams || []) {
+        for (const param of service.params || []) {
           if (param.key === 'browse_id') {
             browseId = param.value;
             break;
@@ -390,7 +392,8 @@ if (window.Response?.prototype?.json) {
 
 
 function processShelves(shelves, shouldAddPreviews = true) {
-  for (const shelve of shelves) {
+  // Iterate a copy: removing a shelf below would otherwise skip the one after it.
+  for (const shelve of shelves.slice()) {
     if (shelve.shelfRenderer) {
       if (!shelve.shelfRenderer.tvhtml5Style) shelve.shelfRenderer.tvhtml5Style = { effects: {} };
       if (configRead('disableEnlargingThumbnails')) shelve.shelfRenderer.tvhtml5Style.effects.enlarge = false;
@@ -444,7 +447,8 @@ function addPreviews(items) {
 }
 
 function deArrowify(items) {
-  for (const item of items) {
+  // Iterate a copy: removing an ad slot below would otherwise skip the tile after it.
+  for (const item of items.slice()) {
     if (item.adSlotRenderer) {
       const index = items.indexOf(item);
       items.splice(index, 1);

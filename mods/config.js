@@ -55,7 +55,9 @@ const defaultConfig = {
   dimmingOpacity: 0.5,
   enablePaidPromotionOverlay: true,
   speedSettingsIncrement: 0.25,
+  // The settings menu and adblock.js use `preferredVideoCodec`; without this default it read as undefined.
   preferredVideoCodec: 'any',
+  videoPreferredCodec: 'any',
   launchToOnStartup: null,
   reloadHomeOnStartup: true,
   disabledSidebarContents: [],
