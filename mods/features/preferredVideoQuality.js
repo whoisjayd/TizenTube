@@ -34,7 +34,7 @@ class PreferredQualityHandler {
         const playerElement = document.querySelector(SELECTORS.PLAYER);
 
         if (!playerElement) {
-            this.#attachTimeout = setTimeout(() => this.#pollForPlayer(), 100);
+            this.#attachTimeout = setTimeout(() => this.#pollForPlayer(), 1000);
             return;
         }
 

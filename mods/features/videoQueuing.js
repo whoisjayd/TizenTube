@@ -7,7 +7,7 @@ import resolveCommand from '../resolveCommand.js';
 
 function addListener() {
     const videoPlayer = document.querySelector('.html5-video-player');
-    if (!videoPlayer) return setTimeout(addListener, 250);
+    if (!videoPlayer) return setTimeout(addListener, 1000);
 
     videoPlayer.addEventListener('onStateChange', () => {
         const playerStateObject = videoPlayer.getPlayerStateObject();

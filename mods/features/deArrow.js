@@ -1,33 +1,57 @@
 import { configRead } from '../config.js';
+import { deArrowCacheLimit, deArrowFetchConcurrencyFor, deArrowWaitMs, getDeviceBudget } from '../utils/deviceBudget.js';
 
 // DeArrow (https://dearrow.ajay.app/) titles and thumbnails.
 //
 // YouTube TV renders a tile as soon as it parses the API response, so branding that arrives later never shows.
-// To get it in first, the responses that carry tiles (browse, search, next) are held back until the branding
-// of their videos is fetched (at most MAX_WAIT_MS), and deArrowItem then applies it while the response is parsed.
+// To get it in first, browse/search/next responses are held until branding arrives, bounded by the device budget.
+// Lean TVs do not wait: a 2s hold plus a full JSON walk of the home feed is what makes those sets hitch.
 
-const nativeParse = JSON.parse;
 const HELD_URL = /\/youtubei\/v1\/(browse|search|next)\b/;
 const HELD_EVENTS = ['readystatechange', 'load', 'loadend'];
-const MAX_WAIT_MS = 2000;
+const CONTENT_ID = /"contentId"\s*:\s*"([A-Za-z0-9_-]{11})"/g;
 
 const branding = new Map();  // videoID -> DeArrow branding response
 const inFlight = new Map();  // videoID -> Promise of it
+const fetchQueue = [];
+let activeFetches = 0;
+
+function remember(videoID, data) {
+  if (!data || typeof data !== 'object') return;
+  if (branding.has(videoID)) branding.delete(videoID);
+  branding.set(videoID, data);
+  const limit = deArrowCacheLimit();
+  while (branding.size > limit) branding.delete(branding.keys().next().value);
+}
+
+function pumpFetches() {
+  const max = deArrowFetchConcurrencyFor(getDeviceBudget());
+  while (activeFetches < max && fetchQueue.length) {
+    const job = fetchQueue.shift();
+    activeFetches++;
+    fetch(`https://sponsor.ajay.app/api/branding?videoID=${job.videoID}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        remember(job.videoID, data);
+        return data || null;
+      })
+      .catch(() => null)
+      .then(data => {
+        inFlight.delete(job.videoID);
+        activeFetches--;
+        job.resolve(data);
+        pumpFetches();
+      });
+  }
+}
 
 function fetchBranding(videoID) {
   if (branding.has(videoID)) return Promise.resolve(branding.get(videoID));
   if (inFlight.has(videoID)) return inFlight.get(videoID);
-  const request = fetch(`https://sponsor.ajay.app/api/branding?videoID=${videoID}`)
-    .then(res => res.json())
-    .then(data => {
-      branding.set(videoID, data);
-      return data;
-    })
-    .catch(() => null)
-    .then(data => {
-      inFlight.delete(videoID);
-      return data;
-    });
+  const request = new Promise(resolve => {
+    fetchQueue.push({ videoID, resolve });
+    pumpFetches();
+  });
   inFlight.set(videoID, request);
   return request;
 }
@@ -95,17 +119,22 @@ export function deArrowItem(item) {
   else fetchBranding(videoID).then(apply);
 }
 
-function collectVideoIds(node, ids, depth) {
-  if (!node || typeof node !== 'object' || depth > 64) return ids;
-  if (Array.isArray(node)) {
-    for (const child of node) collectVideoIds(child, ids, depth + 1);
-    return ids;
+function idsFromText(text) {
+  const ids = [];
+  if (!text) return ids;
+  // Scanning the whole home-feed string still beats a second JSON.parse of it.
+  const sample = text.length > 1500000 ? text.slice(0, 1500000) : text;
+  const cap = deArrowWaitMs() === 0 ? 8 : 30;
+  const seen = new Set();
+  CONTENT_ID.lastIndex = 0;
+  let match;
+  while (ids.length < cap && (match = CONTENT_ID.exec(sample))) {
+    const id = match[1];
+    if (seen.has(id) || branding.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
   }
-  const tile = node.tileRenderer;
-  if (tile?.contentId && (!tile.contentType || tile.contentType === 'TILE_CONTENT_TYPE_VIDEO')) ids.add(tile.contentId);
-  const lockup = node.lockupViewModel;
-  if (lockup?.contentId && lockup.contentType === 'LOCKUP_CONTENT_TYPE_VIDEO') ids.add(lockup.contentId);
-  for (const key in node) collectVideoIds(node[key], ids, depth + 1);
+  CONTENT_ID.lastIndex = 0;
   return ids;
 }
 
@@ -113,14 +142,17 @@ function prefetchFor(xhr) {
   if (xhr.__deArrowPrefetch) return xhr.__deArrowPrefetch;
   let ids = [];
   try {
-    const body = xhr.responseType === '' || xhr.responseType === 'text'
-      ? nativeParse(xhr.responseText.replace(/^\)\]\}'\s*/, ''))
-      : xhr.response;
-    ids = [...collectVideoIds(body, new Set(), 0)].filter(id => !branding.has(id));
+    if (xhr.responseType === '' || xhr.responseType === 'text') ids = idsFromText(xhr.responseText);
   } catch (e) { }
+  const wait = deArrowWaitMs();
+  if (!ids.length || wait === 0) {
+    for (let i = 0; i < ids.length; i++) fetchBranding(ids[i]);
+    xhr.__deArrowPrefetch = Promise.resolve();
+    return xhr.__deArrowPrefetch;
+  }
   const fetched = Promise.all(ids.map(fetchBranding));
-  const timeout = new Promise(resolve => setTimeout(resolve, MAX_WAIT_MS));
-  xhr.__deArrowPrefetch = ids.length ? Promise.race([fetched, timeout]) : Promise.resolve();
+  const timeout = new Promise(resolve => setTimeout(resolve, wait));
+  xhr.__deArrowPrefetch = Promise.race([fetched, timeout]);
   return xhr.__deArrowPrefetch;
 }
 
@@ -134,7 +166,10 @@ function holding(listener) {
       const xhr = this instanceof XMLHttpRequest ? this : event?.target;
       if (!xhr?.__deArrowHold || xhr.readyState !== 4) return listener.apply(this, arguments);
       const self = this, args = arguments;
-      prefetchFor(xhr).then(() => listener.apply(self, args));
+      const pending = prefetchFor(xhr);
+      // Lean budget: start the fetches, but do not delay YouTube's own listener.
+      if (deArrowWaitMs() === 0) return listener.apply(self, args);
+      pending.then(() => listener.apply(self, args));
     };
     wrapper.__deArrowListener = listener;
     holders.set(listener, wrapper);

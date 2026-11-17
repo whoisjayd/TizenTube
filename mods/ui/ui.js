@@ -2,6 +2,7 @@
 import '../spatial-navigation-polyfill.js';
 import css from './ui.css';
 import { configRead, configWrite } from '../config.js';
+import { applyRuntimeBudget, isBackKey, isSelectKey } from '../utils/deviceBudget.js';
 import updateStyle from './theme.js';
 import { showToast } from './ytUI.js';
 import modernUI from './settings.js';
@@ -18,7 +19,7 @@ const interval = setInterval(() => {
     patchResolveCommand();
     clearInterval(interval);
   }
-}, 250);
+}, 1000);
 
 let keyTimeout = null;
 
@@ -50,17 +51,7 @@ function execute_once_dom_loaded() {
 
   // Fix UI issues.
   const ui = configRead('enableFixedUI');
-  if (ui) {
-    try {
-      window.tectonicConfig.featureSwitches.isLimitedMemory = false;
-      window.tectonicConfig.clientData.legacyApplicationQuality = 'full-animation';
-      window.tectonicConfig.featureSwitches.enableAnimations = true;
-      window.tectonicConfig.featureSwitches.enableOnScrollLinearAnimation = true;
-      window.tectonicConfig.featureSwitches.enableListAnimations = true;
-      window.tectonicConfig.featureSwitches.supportsLongPress = true;
-      window.tectonicConfig.featureSwitches.enableCaptionsPersistence = true;
-    } catch (e) { }
-  }
+  if (ui) applyRuntimeBudget(window);
 
   // We handle key events ourselves.
   window.__spatialNavigation__.keyMode = 'NONE';
@@ -89,7 +80,7 @@ function execute_once_dom_loaded() {
       if (evt.keyCode !== 404 && evt.keyCode !== 172) {
         if (evt.keyCode in ARROW_KEY_CODE) {
           navigate(ARROW_KEY_CODE[evt.keyCode]);
-        } else if (evt.keyCode === 13 || evt.keyCode === 32) {
+        } else if (isSelectKey(evt.keyCode)) {
           // "OK" button
           console.log('OK button pressed');
           const focusedElement = document.querySelector(':focus');
@@ -100,11 +91,11 @@ function execute_once_dom_loaded() {
           evt.preventDefault();
           evt.stopPropagation();
           return;
-        } else if (evt.keyCode === 27 && document.querySelector(':focus').type !== 'text') {
+        } else if (isBackKey(evt.keyCode) && document.querySelector(':focus').type !== 'text') {
           // Back button
           uiContainer.style.display = 'none';
           uiContainer.blur();
-        } else if (document.querySelector(':focus').type === 'text' && evt.keyCode === 27) {
+        } else if (document.querySelector(':focus').type === 'text' && isBackKey(evt.keyCode)) {
           const focusedElement = document.querySelector(':focus');
           focusedElement.value = focusedElement.value.slice(0, -1);
         }
@@ -262,7 +253,7 @@ function execute_once_dom_loaded() {
 
   if (configRead('enableFixedUI')) {
     try {
-      const observer = new MutationObserver((_, _2) => {
+      const observer = new MutationObserver(() => {
         const body = document.body;
         if (body.classList.contains('app-quality-root')) {
           body.classList.remove('app-quality-root');

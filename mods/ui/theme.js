@@ -1,4 +1,4 @@
-import { configRead } from '../config.js';
+import { configRead, configChangeEmitter } from '../config.js';
 
 const style = document.createElement('style');
 let css = '';
@@ -18,6 +18,13 @@ function updateStyle() {
         css += `
     ytlr-guide-response yt-focus-container {
         background-color: #000000;
+    }
+`;
+    }
+    if (configRead('hideYouTubeLogo')) {
+        css += `
+    ytlr-logo, .ytLrLogo, .ytLrMastheadLogo, #youtube-logo {
+        display: none !important;
     }
 `;
     }
@@ -50,4 +57,9 @@ if (document.head) {
     document.addEventListener('DOMContentLoaded', () => document.head.appendChild(style));
 }
 updateStyle();
+configChangeEmitter.addEventListener('configChange', (event) => {
+    if (event.detail?.key === 'hideYouTubeLogo' || event.detail?.key === 'trueBlackBackground' || event.detail?.key === 'progressBarColor' || event.detail?.key === 'routeColor') {
+        updateStyle();
+    }
+});
 export default updateStyle;

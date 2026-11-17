@@ -231,28 +231,32 @@ class SponsorBlockHandler {
       elm.style.setProperty('width', `${segment.category === 'poi_highlight' ? 1 : widthPercent}%`, 'important');
       elm.style.setProperty('left', `${leftPercent}%`, 'important');
       elm.style.setProperty('position', 'absolute', 'important');
-      console.info('Generated element', elm, 'from', segment);
+      console.info('Generated segment bar', segment.category);
       this.segmentsoverlay.appendChild(elm);
     });
 
     this.observer = new MutationObserver((mutations) => {
-      mutations.forEach((m) => {
-        if (m.removedNodes) {
-          for (const node of m.removedNodes) {
-            if (node === this.segmentsoverlay) {
-              console.info('bringing back segments overlay');
-              this.slider.appendChild(this.segmentsoverlay);
-            }
+      for (let i = 0; i < mutations.length; i++) {
+        const removed = mutations[i].removedNodes;
+        if (!removed) continue;
+        for (let j = 0; j < removed.length; j++) {
+          if (removed[j] === this.segmentsoverlay) {
+            this.slider.appendChild(this.segmentsoverlay);
           }
         }
-
-        if (document.querySelector('ytlr-progress-bar')?.getAttribute('hybridnavfocusable') === 'false') {
-          this.segmentsoverlay.style.setProperty('display', 'none', 'important');
-        } else {
-          this.segmentsoverlay.style.setProperty('display', 'block', 'important');
-        }
-      });
+      }
     });
+
+    const progressBar = document.querySelector('ytlr-progress-bar');
+    if (progressBar) {
+      const syncOverlay = () => {
+        const hidden = progressBar.getAttribute('hybridnavfocusable') === 'false';
+        this.segmentsoverlay.style.setProperty('display', hidden ? 'none' : 'block', 'important');
+      };
+      this.progressObserver = new MutationObserver(syncOverlay);
+      this.progressObserver.observe(progressBar, { attributes: true, attributeFilter: ['hybridnavfocusable'] });
+      syncOverlay();
+    }
 
     this.sliderInterval = setInterval(() => {
       this.slider = document.querySelector('ytlr-redux-connect-ytlr-progress-bar');
@@ -260,8 +264,7 @@ class SponsorBlockHandler {
         clearInterval(this.sliderInterval);
         this.sliderInterval = null;
         this.observer.observe(this.slider, {
-          childList: true,
-          subtree: true
+          childList: true
         });
         this.slider.appendChild(this.segmentsoverlay);
       }
@@ -272,15 +275,7 @@ class SponsorBlockHandler {
     clearTimeout(this.nextSkipTimeout);
     this.nextSkipTimeout = null;
 
-    if (!this.active) {
-      console.info(this.videoID, 'No longer active, ignoring...');
-      return;
-    }
-
-    if (this.video.paused) {
-      console.info(this.videoID, 'Currently paused, ignoring...');
-      return;
-    }
+    if (!this.active || this.video.paused) return;
 
     // Sometimes timeupdate event (that calls scheduleSkip) gets fired right before
     // already scheduled skip routine below. Let's just look back a little bit
@@ -292,35 +287,14 @@ class SponsorBlockHandler {
     );
     nextSegments.sort((s1, s2) => s1.segment[0] - s2.segment[0]);
 
-    if (!nextSegments.length) {
-      console.info(this.videoID, 'No more segments');
-      return;
-    }
+    if (!nextSegments.length) return;
 
     const [segment] = nextSegments;
     const [start, end] = segment.segment;
-    console.info(
-      this.videoID,
-      'Scheduling skip of',
-      segment,
-      'in',
-      start - this.video.currentTime
-    );
 
     this.nextSkipTimeout = setTimeout(() => {
-      if (this.video.paused) {
-        console.info(this.videoID, 'Currently paused, ignoring...');
-        return;
-      }
-      if (!this.skippableCategories.includes(segment.category)) {
-        console.info(
-          this.videoID,
-          'Segment',
-          segment.category,
-          'is not skippable, ignoring...'
-        );
-        return;
-      }
+      if (this.video.paused) return;
+      if (!this.skippableCategories.includes(segment.category)) return;
 
       const skipName = barTypes[segment.category]?.name || segment.category;
       console.info(this.videoID, 'Skipping', segment);
@@ -383,6 +357,11 @@ class SponsorBlockHandler {
     if (this.observer) {
       this.observer.disconnect();
       this.observer = null;
+    }
+
+    if (this.progressObserver) {
+      this.progressObserver.disconnect();
+      this.progressObserver = null;
     }
 
     if (this.segmentsoverlay) {

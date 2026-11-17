@@ -33,7 +33,7 @@ function element() {
 }
 
 // Loads the shipped bundle into a fresh realm that records fetch() URLs and console.error calls.
-function page(config = {}) {
+function page(config = {}, extras = {}) {
     const document = {
         ...eventTarget(),
         readyState: 'complete',
@@ -49,7 +49,11 @@ function page(config = {}) {
     const context = vm.createContext({
         ...eventTarget(),
         document,
-        navigator: { language: 'en-US', userAgent: 'Tizen' },
+        navigator: {
+            language: 'en-US',
+            userAgent: extras.userAgent || 'Tizen',
+            deviceMemory: extras.deviceMemory,
+        },
         location: { hostname: 'www.youtube.com', href: 'https://www.youtube.com/tv', hash: '' },
         localStorage: { 'ytaf-configuration': JSON.stringify(config) },
         console: { log() {}, info() {}, warn() {}, error(...args) { errors.push(args); } },
@@ -113,6 +117,47 @@ test('the tile after an ad slot is still processed by DeArrow', () => {
     ] } } });
     assert.ok(fetched.some(url => url.includes('AAAAAAAAAAA')), 'tile right after the ad slot');
     assert.ok(fetched.some(url => url.includes('BBBBBBBBBBB')));
+});
+
+test('ad slots in a shelf are removed and playback metadata is left alone', () => {
+    const { context } = page();
+    const result = parse(context, {
+        contents: { sectionListRenderer: { contents: [
+            shelf([{ adSlotRenderer: { ad: true } }, tile('CCCCCCCCCCC')]),
+        ] } },
+        streamingData: { adaptiveFormats: [{ mimeType: 'video/mp4; codecs="avc1"', height: 720 }] },
+        responseContext: { adSlotRenderer: { outsideTheShelf: true } },
+        onResponseReceivedActions: [{ adSlotRenderer: {} }, { appendContinuationItemsAction: {} }],
+    });
+    const items = result.contents.sectionListRenderer.contents[0].shelfRenderer.content.horizontalListRenderer.items;
+    assert.equal(items.some(item => item.adSlotRenderer), false);
+    assert.equal(items.some(item => item.tileRenderer?.contentId === 'CCCCCCCCCCC'), true);
+    assert.equal(result.streamingData.adaptiveFormats.length, 1);
+    assert.equal(result.responseContext.adSlotRenderer.outsideTheShelf, true);
+    assert.equal(result.onResponseReceivedActions.some(action => action.adSlotRenderer), false);
+    assert.equal(result.onResponseReceivedActions.length, 1);
+});
+
+test('a low-memory TV, including Android TV, still gets full video previews', () => {
+    const watchShelf = { contents: { sectionListRenderer: { contents: [shelf([tile('DDDDDDDDDDD')])] } } };
+    const { context: lean } = page({}, { deviceMemory: 0.5, userAgent: 'Mozilla/5.0 (Linux; Android 9; AFTMM) Cobalt/25' });
+    const command = parse(lean, watchShelf).contents.sectionListRenderer.contents[0]
+        .shelfRenderer.content.horizontalListRenderer.items[0]
+        .tileRenderer.onFocusCommand.startInlinePlaybackCommand;
+    assert.equal(command.durationMs, 40000);
+    assert.equal(command.muted, false);
+    assert.equal(command.playbackEndpoint.watchEndpoint.videoId, 'DDDDDDDDDDD');
+});
+
+test('playback requests are marked ad-free without cloning the payload', () => {
+    const { context } = page();
+    context.body = { playbackContext: { contentPlaybackContext: { foo: 1 } }, videoId: 'x' };
+    const text = vm.runInContext('JSON.stringify(body)', context);
+    const out = JSON.parse(text);
+    assert.equal(out.playbackContext.contentPlaybackContext.isInlinePlaybackNoAd, true);
+    assert.equal(out.playbackContext.contentPlaybackContext.foo, 1);
+    assert.equal(out.videoId, 'x');
+    assert.equal(context.body.playbackContext.contentPlaybackContext.isInlinePlaybackNoAd, true);
 });
 
 test('preferred video codec: default keeps every format, a chosen codec filters and tolerates missing mimeType', () => {

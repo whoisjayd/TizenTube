@@ -5,10 +5,18 @@ import { GuideEntryRenderer } from "./ytUI.js";
 const origParse = JSON.parse;
 JSON.parse = function () {
     const r = origParse.apply(this, arguments);
-    // This hook wraps every JSON.parse in the page: JSON like `null` or an empty
-    // `items` array must pass through untouched instead of throwing.
-    const guideSection = r?.items?.[0]?.guideSectionRenderer;
-    if (guideSection && !configRead('enableShorts')) {
+    // This hook wraps every JSON.parse in the page. Anything that is not a guide
+    // response has to return immediately: this used to call configRead on every blob.
+    if (!r || typeof r !== 'object' || !Array.isArray(r.items)) return r;
+    let guideSection = null;
+    for (let i = 0; i < r.items.length; i++) {
+        if (r.items[i]?.guideSectionRenderer) {
+            guideSection = r.items[i].guideSectionRenderer;
+            break;
+        }
+    }
+    if (!guideSection || !Array.isArray(guideSection.items)) return r;
+    if (!configRead('enableShorts')) {
         guideSection.items = guideSection.items.filter(item =>
             item.guideEntryRenderer?.navigationEndpoint?.reelWatchEndpoint?.watchEndpointSource !== 'REEL_WATCH_ENDPOINT_SOURCE_SHORTS_PIVOT_BAR');
     }

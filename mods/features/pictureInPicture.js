@@ -23,7 +23,7 @@ let PlayerService = null;
 function pipLoad() {
     const mappings = Object.values(window._yttv || {}).find(a => a && a.mappings);
     if (!mappings || typeof mappings.get !== 'function' || !mappings.get('PlayerService') || !mappings.get('PlaybackPreviewService')) {
-        return setTimeout(pipLoad, 250);
+        return setTimeout(pipLoad, 1000);
     }
     PlayerService = mappings.get('PlayerService');
     const PlaybackPreviewService = mappings.get('PlaybackPreviewService');
@@ -125,8 +125,13 @@ const originalClasses = {
     }
 }
 
+let pipScanTimer = null;
 const observerPipEnter = new MutationObserver(() => {
-    if (!window.isPipPlaying) return;
+    if (!window.isPipPlaying || pipScanTimer) return;
+    // The whole document mutates while PiP is up. Coalesce that into a few checks a second.
+    pipScanTimer = setTimeout(() => {
+        pipScanTimer = null;
+        if (!window.isPipPlaying) return;
     const searchBar = document.querySelector('ytlr-search-bar');
     if (searchBar) {
         const pipButtonExists = document.querySelector('#tt-pip-button');
@@ -206,6 +211,7 @@ const observerPipEnter = new MutationObserver(() => {
             }
         }
     }
+    }, 300);
 });
 
 function syncPipObserver() {

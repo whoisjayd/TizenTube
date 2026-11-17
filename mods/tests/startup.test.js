@@ -206,4 +206,6 @@ test('row continuation tiles get previews and a tile without a watch endpoint do
     const preview = items.find(i => i.tileRenderer?.onSelectCommand?.watchEndpoint)
         .tileRenderer.onFocusCommand?.startInlinePlaybackCommand;
     assert.equal(preview?.playbackEndpoint?.watchEndpoint?.videoId, 'abc');
+    assert.equal(preview.durationMs, 40000);
+    assert.equal(preview.muted, false);
 });

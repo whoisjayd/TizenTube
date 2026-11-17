@@ -32,7 +32,7 @@ export default function modernUI(update, parameters) {
             options: [
                 {
                     name: 'GitHub',
-                    link: 'https://github.com/reisxd/TizenTube',
+                    link: 'https://github.com/whoisjayd/TizenTube',
                 },
                 {
                     name: 'YouTube',
@@ -310,6 +310,38 @@ export default function modernUI(update, parameters) {
                 {
                     name: t('settings.options.misc.options.videoPreviews'),
                     value: 'enablePreviews'
+                },
+                {
+                    name: t('settings.options.misc.options.showVideoEndTime'),
+                    icon: 'TIMER',
+                    value: 'showVideoEndTime'
+                },
+                {
+                    name: t('settings.options.misc.options.showDislikes'),
+                    icon: 'DISLIKE',
+                    value: 'showDislikes'
+                },
+                {
+                    name: t('settings.options.misc.options.hideYouTubeLogo'),
+                    icon: 'VISIBILITY_OFF',
+                    value: 'hideYouTubeLogo'
+                },
+                {
+                    name: t('settings.options.misc.options.sleepTimer.title'),
+                    icon: 'TIMER',
+                    value: null,
+                    menuId: 'tt-sleep-timer',
+                    menuHeader: {
+                        title: t('settings.options.misc.options.sleepTimer.title'),
+                        subtitle: t('settings.options.misc.options.sleepTimer.subtitle')
+                    },
+                    options: [0, 15, 30, 45, 60, 90, 120].map((minutes) => ({
+                        name: minutes === 0
+                            ? t('settings.options.misc.options.sleepTimer.off')
+                            : t('settings.options.time.minutes', { count: minutes }),
+                        key: 'sleepTimerMinutes',
+                        value: minutes
+                    }))
                 },
                 {
                     name: t('settings.options.misc.options.ttWelcomeMsg'),
@@ -917,6 +949,11 @@ export default function modernUI(update, parameters) {
                             name: t('settings.options.uiSettings.options.clock.options.clockHideWhenVideoPlaying'),
                             icon: 'EYE_OFF',
                             value: 'clockHideWhenVideoPlaying'
+                        },
+                        {
+                            name: t('settings.options.uiSettings.options.clock.options.clockBurnInShift'),
+                            icon: 'TIMER',
+                            value: 'clockBurnInShift'
                         }
                     ]
                 },

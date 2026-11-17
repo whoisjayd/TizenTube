@@ -2,7 +2,7 @@ import { configRead } from "../config.js";
 
 function attachToVideoPlayer() {
     const player = document.querySelector('.html5-video-player');
-    if (!player) return setTimeout(attachToVideoPlayer, 500);
+    if (!player) return setTimeout(attachToVideoPlayer, 1000);
 
     player.addEventListener('onPlaybackStartExternal', () => {
         try {

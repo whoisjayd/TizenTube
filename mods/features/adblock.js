@@ -1,5 +1,6 @@
 import { configRead, cloneJSON } from '../config.js';
 import { applyFormatPreferences } from '../utils/formatPreferences.js';
+import { previewLimits } from '../utils/deviceBudget.js';
 import Chapters from '../ui/chapters.js';
 import resolveCommand from '../resolveCommand.js';
 import { timelyAction, longPressData, MenuServiceItemRenderer, ShelfRenderer, TileRenderer, ButtonRenderer } from '../ui/ytUI.js';
@@ -28,21 +29,34 @@ function stripPlayerAds(obj) {
   if (obj.adSlots) obj.adSlots = [];
 }
 
-const origParse = JSON.parse;
-JSON.parse = function () {
-  const r = origParse.apply(this, arguments);
-  // Primitives and null can't carry any of the structures handled below.
+// Most JSON.parse calls are tiny blobs (settings, logging, captions). Walking those
+// allocates nothing useful and stalls the main thread on a 1 GB TV.
+function isInnertubePayload(r) {
+  if (Array.isArray(r)) {
+    const first = r[0];
+    return !!(first && typeof first === 'object' && (first.playerResponse || first.adPlacements || first.videoDetails || first.streamingData));
+  }
+  return !!(r.adPlacements || r.adSlots || r.playerAds || r.playerResponse || r.streamingData
+    || r.videoDetails || r.playbackContext || r.contents || r.continuationContents
+    || r.onResponseReceivedActions || r.entries || r.endscreen || r.playerOverlays
+    || r.transportControls || r.paidContentOverlay || r.messages || r.frameworkUpdates
+    || (r.title && r.title.runs));
+}
+
+const processedPayloads = typeof WeakSet === 'function' ? new WeakSet() : null;
+
+function processInnertube(r) {
   if (r === null || typeof r !== 'object') return r;
+  if (processedPayloads) {
+    if (processedPayloads.has(r)) return r;
+  }
+  if (!isInnertubePayload(r)) return r;
+  if (processedPayloads) processedPayloads.add(r);
   try {
     const adBlockEnabled = configRead('enableAdBlock');
     const signinReminderEnabled = configRead('enableSigninReminder');
 
     if (r?.videoDetails?.channelId) setCurrentChannelId(r.videoDetails.channelId);
-
-    if (r?.playbackContext?.contentPlaybackContext) {
-      // Handle inline playback without ads
-      console.log(r.playbackContext.contentPlaybackContext);
-    }
 
     if (adBlockEnabled) {
       stripPlayerAds(r);
@@ -342,17 +356,30 @@ JSON.parse = function () {
   }
 
   return r;
+}
+
+const origParse = JSON.parse;
+JSON.parse = function () {
+  return processInnertube(origParse.apply(this, arguments));
 };
 
-// Fix playback issues
+// Fix playback issues. Set the flag on the object about to be sent instead of
+// cloning the whole player request through parse+stringify (that doubled the
+// allocation of every playback start).
 
 const origStringify = JSON.stringify;
 JSON.stringify = function (value, replacer, space) {
-  if (value?.playbackContext?.contentPlaybackContext) {
-    const copiedValue = JSON.parse(origStringify(value));
-    if (!copiedValue.playbackContext.contentPlaybackContext.isInlinePlaybackNoAd) {
-      copiedValue.playbackContext.contentPlaybackContext.isInlinePlaybackNoAd = true;
-      return origStringify.call(this, copiedValue, replacer, space);
+  const ctx = value?.playbackContext?.contentPlaybackContext;
+  if (ctx && !ctx.isInlinePlaybackNoAd) {
+    try {
+      ctx.isInlinePlaybackNoAd = true;
+    } catch (e) {
+      const patched = Object.assign({}, value, {
+        playbackContext: Object.assign({}, value.playbackContext, {
+          contentPlaybackContext: Object.assign({}, ctx, { isInlinePlaybackNoAd: true })
+        })
+      });
+      return origStringify.call(this, patched, replacer, space);
     }
   }
   return origStringify.call(this, value, replacer, space);
@@ -381,26 +408,32 @@ const yttvPatchTimer = setInterval(() => {
   if (++yttvPatchRuns >= 60) clearInterval(yttvPatchTimer);
 }, 1000);
 
-// fetch().json() does not go through JSON.parse, so innertube responses read that way
-// would skip the filter. Route them through the patched parser.
+// fetch().json() uses the native parser and skips JSON.parse. Run the same filter on
+// the object it already built. Reading text() first would keep a second multi-megabyte
+// string alive next to the object, which is enough to OOM a 1 GB TV on /player.
+const INNERTUBE_JSON = /\/youtubei\/v1\/(player|browse|next|search|reel|guide|get_watch)\b/;
 if (window.Response?.prototype?.json) {
   const origResponseJson = window.Response.prototype.json;
   window.Response.prototype.json = function () {
-    if (typeof this.url === 'string' && this.url.includes('/youtubei/v1/')) {
-      return this.text().then((text) => JSON.parse(text));
+    const parsed = origResponseJson.apply(this, arguments);
+    if (typeof this.url === 'string' && INNERTUBE_JSON.test(this.url)) {
+      return parsed.then(processInnertube);
     }
-    return origResponseJson.apply(this, arguments);
+    return parsed;
   };
 }
 
 
 function processShelves(shelves, shouldAddPreviews = true) {
+  const allowShorts = configRead('enableShorts');
+  const disableEnlarge = configRead('disableEnlargingThumbnails');
+  const shrinkThumbs = configRead('enableShrinkingThumbnails');
   // Iterate a copy: removing a shelf below would otherwise skip the one after it.
   for (const shelve of shelves.slice()) {
     if (shelve.shelfRenderer) {
       if (!shelve.shelfRenderer.tvhtml5Style) shelve.shelfRenderer.tvhtml5Style = { effects: {} };
-      if (configRead('disableEnlargingThumbnails')) shelve.shelfRenderer.tvhtml5Style.effects.enlarge = false;
-      if (configRead('enableShrinkingThumbnails')) shelve.shelfRenderer.tvhtml5Style.effects.shrink = true;
+      if (disableEnlarge) shelve.shelfRenderer.tvhtml5Style.effects.enlarge = false;
+      if (shrinkThumbs) shelve.shelfRenderer.tvhtml5Style.effects.shrink = true;
       if (!shelve.shelfRenderer.content?.horizontalListRenderer?.items) continue;
       deArrowify(shelve.shelfRenderer.content.horizontalListRenderer.items);
       hqify(shelve.shelfRenderer.content.horizontalListRenderer.items);
@@ -409,15 +442,21 @@ function processShelves(shelves, shouldAddPreviews = true) {
         addPreviews(shelve.shelfRenderer.content.horizontalListRenderer.items);
       }
       shelve.shelfRenderer.content.horizontalListRenderer.items = hideVideo(shelve.shelfRenderer.content.horizontalListRenderer.items);
-      if (!configRead('enableShorts')) {
+      if (!allowShorts) {
         if (shelve.shelfRenderer.tvhtml5ShelfRendererType === 'TVHTML5_SHELF_RENDERER_TYPE_SHORTS') {
           shelves.splice(shelves.indexOf(shelve), 1);
           continue;
         }
-        shelve.shelfRenderer.content.horizontalListRenderer.items = shelve.shelfRenderer.content.horizontalListRenderer.items.filter(item => item.tileRenderer?.tvhtml5ShelfRendererType !== 'TVHTML5_TILE_RENDERER_TYPE_SHORTS');
-        shelve.shelfRenderer.content.horizontalListRenderer.items = shelve.shelfRenderer.content.horizontalListRenderer.items.filter(item => item.lockupViewModel?.contentType !== 'LOCKUP_CONTENT_TYPE_SHORT');
-
-        shelve.shelfRenderer.content.horizontalListRenderer.items = shelve.shelfRenderer.content.horizontalListRenderer.items.filter(item => !item.tileRenderer?.onSelectCommand?.reelWatchEndpoint);
+        const items = shelve.shelfRenderer.content.horizontalListRenderer.items;
+        const kept = [];
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.tileRenderer?.tvhtml5ShelfRendererType === 'TVHTML5_TILE_RENDERER_TYPE_SHORTS') continue;
+          if (item.lockupViewModel?.contentType === 'LOCKUP_CONTENT_TYPE_SHORT') continue;
+          if (item.tileRenderer?.onSelectCommand?.reelWatchEndpoint) continue;
+          kept.push(item);
+        }
+        shelve.shelfRenderer.content.horizontalListRenderer.items = kept;
       }
     }
   }
@@ -425,6 +464,8 @@ function processShelves(shelves, shouldAddPreviews = true) {
 
 function addPreviews(items) {
   if (!configRead('enablePreviews')) return;
+  const limits = previewLimits();
+  if (!limits) return;
   for (const item of items) {
     if (item.tileRenderer) {
       if (item.tileRenderer?.onFocusCommand?.playbackEndpoint) continue;
@@ -437,9 +478,9 @@ function addPreviews(items) {
         startInlinePlaybackCommand: {
           blockAdoption: true,
           caption: false,
-          delayMs: 3000,
-          durationMs: 40000,
-          muted: false,
+          delayMs: limits.delayMs,
+          durationMs: limits.durationMs,
+          muted: limits.muted,
           restartPlaybackBeforeSeconds: 10,
           resumeVideo: true,
           playbackEndpoint: copiedEndpoint
@@ -633,13 +674,47 @@ function hideVideo(items) {
   });
 }
 
-function stripAdSlots(node) {
+// Keys that never contain an ad slot. A browse response is mostly tracking,
+// thumbnails and commands; walking those on every parse is what stalls the UI.
+const AD_WALK_SKIP = {
+  responseContext: 1,
+  playbackTracking: 1,
+  captions: 1,
+  storyboards: 1,
+  videoDetails: 1,
+  microformat: 1,
+  playerConfig: 1,
+  streamingData: 1,
+  attestation: 1,
+  frameworkUpdates: 1,
+  trackingParams: 1,
+  clickTrackingParams: 1,
+  thumbnail: 1,
+  thumbnails: 1,
+  navigationEndpoint: 1,
+  onSelectCommand: 1,
+  onLongPressCommand: 1,
+  loggingDirectives: 1,
+  menu: 1,
+  playbackEndpoint: 1,
+  watchEndpoint: 1,
+  browseEndpoint: 1,
+  commandMetadata: 1,
+  webCommandMetadata: 1
+};
+
+function stripAdSlots(node, depth = 0) {
+  if (!node || typeof node !== 'object' || depth > 32) return;
   if (Array.isArray(node)) {
     for (let i = node.length - 1; i >= 0; i--) {
       if (node[i]?.adSlotRenderer) node.splice(i, 1);
-      else stripAdSlots(node[i]);
+      else stripAdSlots(node[i], depth + 1);
     }
-  } else if (node && typeof node === 'object') {
-    for (const key in node) stripAdSlots(node[key]);
+    return;
+  }
+  for (const key in node) {
+    if (AD_WALK_SKIP[key]) continue;
+    const child = node[key];
+    if (child && typeof child === 'object') stripAdSlots(child, depth + 1);
   }
 }

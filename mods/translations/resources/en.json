@@ -67,6 +67,14 @@
                     "longPress": "Enable Long Press Actions",
                     "shorts": "Enable Shorts",
                     "videoPreviews": "Enable Video Previews",
+                    "showVideoEndTime": "Show What Time the Video Ends",
+                    "showDislikes": "Show Like and Dislike Counts",
+                    "hideYouTubeLogo": "Hide the YouTube Logo",
+                    "sleepTimer": {
+                        "title": "Sleep Timer",
+                        "subtitle": "Pause playback after a while. Works on Samsung and Android TV.",
+                        "off": "Off"
+                    },
                     "ttWelcomeMsg": "Show TT Welcome Message",
                     "guestSignInReminder": "Show Guest Sign In Reminder",
                     "reloadHomeOnStartup": "Reload Home on Startup"
@@ -219,7 +227,7 @@
                     },
                     "launchToOnStartup": {
                         "title": "Launch To on Startup",
-                        "subtitle": "Choose the default page TizenTube opens to on startup"
+                        "subtitle": "Choose the default page tube opens to on startup"
                     },
                     "categories": {
                         "search": "Search",
@@ -246,7 +254,8 @@
                             "enableClock": "Enable Clock",
                             "isClock12HourFormat": "Use 12-Hour Format for Clock",
                             "clockShowSeconds": "Show Seconds on Clock",
-                            "clockHideWhenVideoPlaying": "Hide Clock While Video is Playing"
+                            "clockHideWhenVideoPlaying": "Hide Clock While Video is Playing",
+                            "clockBurnInShift": "Shift Clock to Reduce OLED Burn-in"
                         }
                     },
                     "disableEnlargingThumbnails": "Disable Enlarged Thumbnails",
@@ -294,17 +303,17 @@
             }
         },
         "ttSettings": {
-            "title": "TizenTube Settings",
-            "madeByText": "Made by Reis Can (reisxd) with ❤️",
-            "summary": "Open TizenTube Settings"
+            "title": "tube settings",
+            "madeByText": "Maintained version of the original TizenTube. Original by Reis Can (reisxd).",
+            "summary": "Open tube settings"
         },
         "supportTT": {
-            "title": "Support TizenTube",
-            "subtitle": "❤️ Show support for TizenTube and its development",
+            "title": "Support tube",
+            "subtitle": "This is a maintained version of the original TizenTube",
             "content": {
-                "1": "If you enjoy using TizenTube and would like to support its development, consider the following:",
-                "2": "1. Star the GitHub repository to help increase its visibility.",
-                "3": "2. Share TizenTube with others.",
+                "1": "tube is a maintained version of the original TizenTube by Reis Can (reisxd).",
+                "2": "1. Star this repository: https://github.com/whoisjayd/TizenTube",
+                "3": "2. Share tube with others.",
                 "4": "If you would like to contribute financially, consider donating:",
                 "5": "- Buy Me A Coffee: https://www.buymeacoffee.com/reisxd (preferably)",
                 "6": "- GitHub Sponsors: https://github.com/sponsors/reisxd"
@@ -312,8 +321,8 @@
         }
     },
     "welcomeMsg": {
-        "title": "Welcome to TizenTube",
-        "subtitle": "Go to settings and click on TizenTube Settings for settings."
+        "title": "tube",
+        "subtitle": "Maintained version of the original TizenTube. Open tube settings to change anything."
     },
     "sponsorblock": {
         "segments": {
@@ -344,13 +353,15 @@
         "pictureInPicture": "Picture in Picture",
         "previous": "Previous",
         "next": "Next",
-        "withTizenTube": "with TizenTube",
+        "withTizenTube": "with tube",
         "share": {
             "title": "Share",
             "button": "Share",
             "qrCodeScanMessage": "Scan the QR code below to share this video."
         },
         "screenOff": "Turn off screen",
+        "endsAt": "Ends {{time}}",
+        "likes": "{{likes}} likes, {{dislikes}} dislikes",
         "chapters": {
             "title": "Chapters",
             "enterNudge": "To view chapters, press the up arrow button",
@@ -384,6 +395,7 @@
         "hiddenVideosCleared": "Hidden videos cleared. They reappear after the page refreshes.",
         "channelBlocked": "{{name}} blocked. Its videos disappear after the page refreshes.",
         "videoQueueCleared": "Video queue cleared.",
+        "sleepTimerDone": "Sleep timer finished. Playback is paused.",
         "feedbackSent": "Feedback sent.",
         "sidebarContentsUpdated": {
             "title": "Sidebar Contents Updated",

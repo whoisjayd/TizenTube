@@ -65,6 +65,12 @@ function toggleClock(value) {
             const minutes = now.getMinutes().toString().padStart(2, '0');
             const seconds = now.getSeconds().toString().padStart(2, '0');
             actualClock.textContent = `${hours}:${minutes}${secondsEnabled ? `:${seconds}` : ''}${is12HourFormat ? (now.getHours() >= 12 ? ' PM' : ' AM') : ''}`;
+            // Nudge the clock a few pixels each minute so a static clock does not burn an OLED.
+            if (configRead('clockBurnInShift')) {
+                const step = Math.floor(now.getTime() / 60000) % 5;
+                actualClock.style.top = `${2 + step * 0.35}%`;
+                actualClock.style.right = `${5 + (step % 3) * 0.5}%`;
+            }
         }
 
         updateClock();
