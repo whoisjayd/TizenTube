@@ -1,6 +1,7 @@
 packets/
 node_modules/
 *.wgt
+*.apk
 .sign
 package-lock.json
 .claude/worktrees/

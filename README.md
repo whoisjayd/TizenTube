@@ -1,64 +1,48 @@
-# ▶️ TizenTube
+# tube
+
 <p align="center">
-    <img width="600px" src=".github/assets/TizenTube Standalone Banner.png">
-    <br>
-    <sub> TizenTube logo, banner and README by <a href="https://github.com/Zyborg777">@Zyborg777</a> </sub>
+    <img width="420" src=".github/assets/logo.svg" alt="tube">
 </p>
 
-**TizenTube** is a TizenBrew module that enhances YouTube on Tizen TVs by removing ads and adding SponsorBlock, DeArrow and more. It also works as a standalone app.
+**tube** is a maintained version of the original [TizenTube](https://github.com/reisxd/TizenTube) by Reis Can. One userscript for Samsung Tizen and for Android TV, Google TV, Fire TV and other smart TVs.
 
-> **This is a maintained fork** of [reisxd/TizenTube](https://github.com/reisxd/TizenTube) with extra startup, ad-block and preview fixes. It tracks upstream; see [docs/MAINTAINING.md](./docs/MAINTAINING.md).
+The GitHub module name stays `whoisjayd/TizenTube`. That is the install id. The app on the TV is **tube**. Samsung and Android are both version 2.2.0. Moving from an older install is covered in [MIGRATION.md](./MIGRATION.md).
 
-## 🚀 Quick start (TizenBrew)
-1. Install [TizenBrew](https://github.com/reisxd/TizenBrew) on your TV.
-2. In TizenBrew, add a GitHub module: `whoisjayd/TizenTube`.
-3. Launch it. If an old version is cached, remove the module, re-add it and restart TizenBrew.
+## Install
 
-`dist/` is committed, so TizenBrew loads the latest build directly from this repository.
+| TV | What you install | Where |
+| --- | --- | --- |
+| Samsung, any year | TizenBrew module `whoisjayd/TizenTube` | This repo. `dist/` is what the TV loads. |
+| Samsung Tizen 6+ (2021 and later) | `TizenTubeCobalt.wgt` | [Releases](https://github.com/whoisjayd/TizenTube/releases) |
+| Samsung Tizen 3–5.5 | `TizenTubeOld.wgt` | [Releases](https://github.com/whoisjayd/TizenTube/releases) |
+| Android TV, Google TV, Fire TV, other 64-bit smart TVs | `cobalt-arm64.apk` | [Releases](https://github.com/whoisjayd/TizenTube/releases) |
+| 32-bit smart TVs | `cobalt-arm.apk` | [Releases](https://github.com/whoisjayd/TizenTube/releases) |
 
-** **
-🤖 **Looking for an app for Android TVs?** Check out [TizenTube Cobalt](https://github.com/reisxd/TizenTubeCobalt). It offers everything TizenTube has for Android TVs.
+The Samsung app and the Android/smart-TV build run the same `dist/userScript.js`. Android remotes use Back (`4`) and D-pad center (`23`). Picture-in-picture uses the Cobalt `h5vcc` bridge when the device has it.
 
+Install steps, proxy packages and the developer-mode IP are in the [installation guide](./docs/README.md).
 
-<p align="left">
-    <a href="https://github.com/reisxd/TizenTubeCobalt/releases/latest">
-        <picture>
-            <img width="250px"
-                src=".github/assets/TizenTube_Cobalt_dl-button.png" />
-        </picture>
-    </a>
-</p>
+## Features
 
-## ❓ How to install
+- Ad blocking, including player responses and Home-feed slots
+- SponsorBlock and DeArrow
+- Video previews, speed, quality and per-channel speed
+- Picture-in-picture, voice search, block channels
+- Progress-bar colour and a true-black background
+- End time, dislike counts, sleep timer
+- OLED care: hide the YouTube logo, and shift the clock off the same pixels
 
-Follow the guide in the [Installation Guide](./docs/README.md).
+Previews, DeArrow and the layout stay on when their settings are on, including 1 GB boxes. The device budget only limits cache size and how many requests run at once.
 
-## ✨ Features
-- 📺 **Picture-in-Picture Mode**
-- 🛑 **Ad Blocker**, including ads nested in player responses and Home-feed ad slots
-- ❗ **SponsorBlock Support**: automatically skip sponsored segments
-- ⏭️ **Video Speed Control**
-- 🔺 **[DeArrow](https://dearrow.ajay.app/) Support**: replace clickbait titles and thumbnails
-- 🚫 **Block channels** from video menus
-- 🎞️ **Video previews on every row**, including scrolled-in tiles
-- 🔍 **Voice search** through the standalone proxy
-- 🎨 **Progress-bar colour** and **true-black background** options
-- ⏩ **Per-channel playback speed** and **ignore short SponsorBlock segments**
-- 🎧 **Audio and video quality controls**: preferred audio codec, highest audio bitrate, max resolution, prefer 60 FPS
-- 🔧 **Hardened startup** for early injection and corrupt saved settings
+## Development
 
-## 🛠️ Development
 ```sh
-cd mods && npm ci && npm run build
-node --experimental-vm-modules --test tests/*.test.js
+cd mods && npm ci && npm test
+cd ../service && npm ci && npx rollup -c rollup.config.js
 ```
-CI builds, tests and refreshes `dist/` on every push to `main`.
 
-## 🌐 Community and Support 
-| Links |
-| ------------- |
-| [r/TizenTube Subreddit](https://www.reddit.com/r/TizenTube/)  |
-| [Discord Server](https://discord.gg/m2P7v8Y2qR)  | 
-| [Telegram](https://t.me/tizentubeofficial)  |
-| [Matrix Space](https://matrix.to/#/!BLE5ubNYktI30e8K0j:matrix.6513006.xyz)  |
-| [Upstream issues](https://github.com/reisxd/TizenTube/issues) · [Fork issues](https://github.com/whoisjayd/TizenTube/issues)  |
+`npm test` in `mods/` rebuilds `dist/userScript.js` and runs the tests. CI does that on every push to `main`, then rebuilds `dist/service.js` and commits `dist/` if it changed. A tag `v*.*.*` publishes the userscript and, when the Tizen certificate is configured, the Samsung packages.
+
+## Community
+
+[r/TizenTube](https://www.reddit.com/r/TizenTube/) · [Discord](https://discord.gg/m2P7v8Y2qR) · [Telegram](https://t.me/tizentubeofficial) · [Matrix](https://matrix.to/#/!BLE5ubNYktI30e8K0j:matrix.6513006.xyz) · [Issues](https://github.com/whoisjayd/TizenTube/issues)

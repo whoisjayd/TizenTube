@@ -24,7 +24,7 @@
             width: 300px;
             height: 4px;
             margin-top: 40px;
-            background-color: rgba(25, 118, 210, 0.3);
+            background-color: #222;
             border-radius: 2px;
             overflow: hidden;
         }
@@ -34,7 +34,7 @@
             top: 0;
             left: 0;
             height: 100%;
-            background-color: #1976D2;
+            background-color: #fff;
             animation: indeterminate-bar 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
     </style>
@@ -134,10 +134,16 @@
 
 <body
     style="background-color: #0f0f0f; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+    <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+        <polygon points="22,14 22,58 58,36" fill="#fff"/>
+    </svg>
     <h1
-        style="color: #FFFFFF; font-size: 80px; font-family: Roboto,Noto Sans CJK ZH-HK,Noto Sans Thai,Arial,Helvetica,sans-serif; margin: 0;">
-        TizenTube
+        style="color: #fff; font-size: 64px; font-weight: 400; letter-spacing: 0.18em; font-family: Arial, Helvetica, sans-serif; margin: 18px 0 0;">
+        tube
     </h1>
+    <p style="color: #9a9a9a; font-size: 22px; font-family: Arial, Helvetica, sans-serif; margin: 14px 0 0;">
+        Maintained version of TizenTube
+    </p>
     <div class="progress-container">
         <div class="progress-bar"></div>
     </div>

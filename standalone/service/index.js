@@ -11,6 +11,7 @@ const startServer = require('./utils/cobaltProxyServer.js');
 const URL = require('url');
 const path = require('path');
 const injector = require('./utils/injector.js');
+const userScriptSource = require('./utils/userScriptSource.js');
 
 // The token the page last used for its own API calls. YouTube's history reports are sent as image and
 // beacon requests, which cannot carry an Authorization header, so they get this one (see the handler).
@@ -196,7 +197,7 @@ app.all('*', (req, res) => {
                 return response.text().then((text) => {
                     if (req.url.indexOf('/tv') === 0 && req.url.indexOf('/tv_config') === -1) {
                         // Insert the userscript for TizenTube
-                        text += `<script src="https://cdn.jsdelivr.net/npm/@foxreis/tizentube/dist/userScript.js?ver=${Date.now()}"></script>`;
+                        text += `<script src="${userScriptSource}"></script>`;
                         text += historyReportsScript;
                     }
 

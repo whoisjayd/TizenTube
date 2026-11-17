@@ -1,97 +1,109 @@
-name: Build TizenTube Standalone and Release
-
+name: Release
 
 on:
   push:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - name: Clone repo with full history and tags
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0 # fetch full history for tags
-          fetch-tags: true
-      
-      - name: Fetch tags (safety)
-        run: |
-          git fetch --tags --force --prune
-      - name: Determine release tag
-        id: version
-        run: |
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
-          if [ -z "$TAG" ]; then
-            echo "No tags found; deriving from config.xml or fallback"
-            if [ -f standalone/config.xml ]; then
-              # Extract version from config.xml's version attribute
-              CFG_VER=$(sed -n 's/.*version="\([^"]*\)".*/\1/p' standalone/config.xml | head -n1)
-              if [ -n "$CFG_VER" ]; then
-                TAG=v$CFG_VER
-              else
-                TAG=v0.0.0-${GITHUB_SHA:0:7}
-              fi
-            else
-              TAG=v0.0.0-${GITHUB_SHA:0:7}
-            fi
-          fi
-          echo "RELEASE_VERSION=$TAG" >> $GITHUB_ENV
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            mods/package-lock.json
+            service/package-lock.json
 
-      - name: Install modules, transpile service and build service for DIAL
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Use the shared version
+        run: node scripts/sync-version.js
+
+      - name: Build and test the userscript
+        working-directory: mods
+        run: npm ci && npm test
+
+      - name: Build the DIAL service
         working-directory: service
-        run: |
-          npm install
-          npx rollup -c rollup.config.js
+        run: npm ci && npx rollup -c rollup.config.js
 
-      - name: Install modules, transpile service and build service
-        working-directory: standalone/service
+      - name: Build Android APKs
         run: |
+          mkdir -p .tmp release
+          curl -fsSL -o .tmp/uber-apk-signer.jar https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar
+          curl -fsSL -o .tmp/src-arm.apk https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.3/cobalt-arm.apk
+          curl -fsSL -o .tmp/src-arm64.apk https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.3/cobalt-arm64.apk
+          node scripts/patch-cobalt-apk.js .tmp/src-arm.apk .tmp/cobalt-arm.apk
+          node scripts/patch-cobalt-apk.js .tmp/src-arm64.apk .tmp/cobalt-arm64.apk
+          java -jar .tmp/uber-apk-signer.jar -a .tmp/cobalt-arm.apk .tmp/cobalt-arm64.apk --allowResign \
+            --ks signing/tube.keystore --ksAlias tube --ksPass tubeapk --ksKeyPass tubeapk -o .tmp/signed
+          cp .tmp/signed/cobalt-arm-aligned-signed.apk release/cobalt-arm.apk
+          cp .tmp/signed/cobalt-arm64-aligned-signed.apk release/cobalt-arm64.apk
+
+      - name: Pack the module both TVs load
+        run: |
+          mkdir -p release
+          cp dist/userScript.js release/TizenTube-userScript.js
+          zip -j release/TizenTube-module.zip package.json dist/userScript.js dist/service.js
+
+      - name: Build Samsung packages
+        env:
+          TIZEN_AUTHOR_KEY: ${{ secrets.TIZEN_AUTHOR_KEY }}
+          TIZEN_AUTHOR_KEY_PW: ${{ secrets.TIZEN_AUTHOR_KEY_PW }}
+        run: |
+          if [ -n "$TIZEN_AUTHOR_KEY" ] && [ -n "$TIZEN_AUTHOR_KEY_PW" ]; then
+            echo "$TIZEN_AUTHOR_KEY" | base64 -d > "$GITHUB_WORKSPACE/TizenTube-author.p12"
+            AUTHOR_P12="$GITHUB_WORKSPACE/TizenTube-author.p12"
+            AUTHOR_PW="$TIZEN_AUTHOR_KEY_PW"
+          else
+            AUTHOR_P12="$GITHUB_WORKSPACE/signing/tizen-author.p12"
+            AUTHOR_PW="tubewgt"
+          fi
+          cd standalone/service
           npm install
           npm install -g @vercel/ncc https://github.com/reisxd/tizen.js/tarball/main
           npm run build
+          cd ..
+          mkdir -p release
+          tizenjs build . -t wgt -o release/TizenTubeCobalt.wgt \
+            --author "$AUTHOR_P12" --authorPwd "$AUTHOR_PW" \
+            -p public --ignore node_modules,/.*\.wgt$/,/userwidget/,/release/
+          node service/build-service.js set-cobalt-proxy
+          tizenjs build . -t wgt -o release/TizenTubeCobaltTizenTubeProxyAddress.wgt \
+            --author "$AUTHOR_P12" --authorPwd "$AUTHOR_PW" \
+            -p public --ignore node_modules,/.*\.wgt$/,/userwidget/,/release/
+          node service/build-service.js remove-cobalt-flags
+          tizenjs build . -t wgt -o release/TizenTubeOld.wgt \
+            --author "$AUTHOR_P12" --authorPwd "$AUTHOR_PW" \
+            -p public --ignore node_modules,/.*\.wgt$/,/userwidget/,/release/
+          cp release/*.wgt "$GITHUB_WORKSPACE/release/"
 
-      - name: Prepare Tizen Certificate
-        run: |
-          echo "${{ secrets.TIZEN_AUTHOR_KEY }}" | base64 -d > "${GITHUB_WORKSPACE}/TizenTube-author.p12"
-
-      - name: Build TizenTube Cobalt
-        working-directory: standalone
-        run: |
-          mkdir release
-          tizenjs build . -t wgt -o release/TizenTubeCobalt.wgt --author "${GITHUB_WORKSPACE}/TizenTube-author.p12" --authorPwd '${{ secrets.TIZEN_AUTHOR_KEY_PW }}' -p public --ignore node_modules,/.*\.wgt$/,/userwidget/,/release/
-
-      - name: Change config.xml to use http://tizentube:8101 as the proxy server for Cobalt
-        working-directory: standalone/service
-        run: |
-          node build-service.js set-cobalt-proxy
-
-      - name: Build TizenTube Cobalt with http://tizentube:8101 as the proxy server
-        working-directory: standalone
-        run: |
-          tizenjs build . -t wgt -o release/TizenTubeCobaltTizenTubeProxyAddress.wgt --author "${GITHUB_WORKSPACE}/TizenTube-author.p12" --authorPwd '${{ secrets.TIZEN_AUTHOR_KEY_PW }}' -p public --ignore node_modules,/.*\.wgt$/,/userwidget/,/release/
-
-      - name: Remove Cobalt flags from config.xml for Old Tizen build
-        working-directory: standalone/service
-        run: |
-          node build-service.js remove-cobalt-flags
-
-      - name: Build TizenTube For Old Tizen (without Cobalt)
-        working-directory: standalone
-        run: |
-          tizenjs build . -t wgt -o release/TizenTubeOld.wgt --author "${GITHUB_WORKSPACE}/TizenTube-author.p12" --authorPwd '${{ secrets.TIZEN_AUTHOR_KEY_PW }}' -p public --ignore node_modules,/.*\.wgt$/,/userwidget/,/release/
-
-      - name: Upload TizenTube package artifact for Old Tizen
-        uses: actions/upload-artifact@v4
+      - name: Publish
+        uses: softprops/action-gh-release@v2
         with:
-            name: app-${{ github.sha }}
-            path: standalone/release/*
-      
-      - name: Release TizenTube Build Results
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.RELEASE_VERSION }}
-          target_commitish: ${{ github.sha }}
-          files: |
-            standalone/release/*
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: release/*
+          body: |
+            tube is a maintained version of the original TizenTube. Same userscript for Samsung Tizen and Android / smart TVs. The app on the TV is named tube.
+
+            - `cobalt-arm64.apk` — Android TV, Google TV, Fire TV and other 64-bit smart TVs
+            - `cobalt-arm.apk` — 32-bit smart TVs
+            - `TizenTube-userScript.js` — the userscript those APKs load
+            - `TizenTube-module.zip` — TizenBrew (`whoisjayd/TizenTube`)
+            - `TizenTubeCobalt.wgt` — Samsung Tizen 6 and later
+            - `TizenTubeCobaltTizenTubeProxyAddress.wgt` — same, proxy host `tizentube`
+            - `TizenTubeOld.wgt` — Samsung Tizen 3 through 5.5
+
+            Samsung packages are signed with this fork's author certificate.

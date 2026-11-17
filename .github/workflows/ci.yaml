@@ -38,6 +38,7 @@ jobs:
         run: |
           npm ci
           npx rollup -c rollup.config.js
+          grep -q "whoisjayd/TizenTube" ../dist/service.js
 
       # TizenBrew loads dist/ straight from the repository, so keep it in sync with the sources.
       - name: Commit rebuilt dist
